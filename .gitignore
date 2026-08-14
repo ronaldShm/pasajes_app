@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Base de datos local
+pasajes.db
+pasajes_backup.db
+
+# Archivos generados
+Log.txt
+config.ini
+Pasajes.xlsx
+
+# Carpetas de procesamiento
+Procesados/
+Errores/
+
+# Distribución / Build
+dist/
+build/
+*.spec
+*.exe
+
+# Sistema
+Thumbs.db
+.DS_Store
+Desktop.ini
