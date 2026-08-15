@@ -1,9 +1,10 @@
 """Panel de visualización de registros con búsqueda, filtros y desplegables."""
 import customtkinter as ctk
 from tkinter import messagebox
+from datetime import datetime
 from database.repository import PasajeRepository
 from excel.exporter import ExcelExporter
-from utils.backup import backup_db
+from utils.backup import backup_db, restore_db, list_backups
 
 
 class RecordsFrame(ctk.CTkFrame):
@@ -55,6 +56,12 @@ class RecordsFrame(ctk.CTkFrame):
             header_frame, text="Backup", width=80,
             command=self._make_backup,
             fg_color="#8e44ad", hover_color="#6c3483"
+        ).pack(side="right", padx=5)
+
+        ctk.CTkButton(
+            header_frame, text="Restaurar", width=90,
+            command=self._restore_backup,
+            fg_color="#d35400", hover_color="#a04000"
         ).pack(side="right", padx=5)
 
         ctk.CTkButton(
@@ -544,6 +551,79 @@ class RecordsFrame(ctk.CTkFrame):
             messagebox.showinfo("Backup", f"Backup creado en:\n{path}")
         except Exception as e:
             messagebox.showerror("Error", f"Error al crear backup:\n{e}")
+
+    def _restore_backup(self):
+        backups = list_backups()
+        if not backups:
+            messagebox.showinfo("Sin backups", "No hay backups disponibles en la carpeta Backups/.")
+            return
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Restaurar Backup")
+        dialog.geometry("450x350")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(
+            dialog, text="Selecciona un backup para restaurar:",
+            font=ctk.CTkFont(size=13, weight="bold")
+        ).pack(padx=15, pady=(15, 5))
+
+        ctk.CTkLabel(
+            dialog, text="Se reemplazará la base de datos actual.",
+            font=ctk.CTkFont(size=11), text_color="#e74c3c"
+        ).pack(padx=15, pady=(0, 10))
+
+        list_frame = ctk.CTkScrollableFrame(dialog, height=180)
+        list_frame.pack(fill="x", padx=15, pady=(0, 10))
+
+        selected_path = [None]
+
+        for bk in backups:
+            fecha = bk.stem.replace("pasajes_", "")
+            try:
+                fecha_fmt = datetime.strptime(fecha, "%Y%m%d").strftime("%d/%m/%Y")
+            except ValueError:
+                fecha_fmt = fecha
+            row = ctk.CTkFrame(list_frame, fg_color="#2b2b2b")
+            row.pack(fill="x", pady=2)
+
+            def select(p=bk, d=dialog):
+                selected_path[0] = p
+                d.destroy()
+
+            ctk.CTkButton(
+                row, text=f"📅 {fecha_fmt}   |   {bk.name}",
+                anchor="w", fg_color="#333", hover_color="#555",
+                command=lambda p=bk, d=dialog: select(p, d)
+            ).pack(fill="x", padx=5, pady=5)
+
+        def cancel():
+            dialog.destroy()
+
+        ctk.CTkButton(
+            dialog, text="Cancelar", width=100,
+            command=cancel, fg_color="#555", hover_color="#333"
+        ).pack(side="left", padx=15, pady=10)
+
+        dialog.wait_window()
+
+        if selected_path[0]:
+            confirm = messagebox.askyesno(
+                "Confirmar restauración",
+                f"¿Restaurar backup?\n\n{selected_path[0].name}\n\n"
+                "Se cerrará la app para aplicar los cambios.",
+                icon="warning"
+            )
+            if confirm:
+                try:
+                    restore_db(selected_path[0])
+                    messagebox.showinfo(
+                        "Restaurado",
+                        "Base de datos restaurada.\nReinicia la app para ver los cambios."
+                    )
+                except Exception as e:
+                    messagebox.showerror("Error", f"Error al restaurar:\n{e}")
 
     def _clear_records(self):
         records = self.repo.obtener_todos()

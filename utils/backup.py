@@ -18,6 +18,12 @@ def backup_db() -> Path:
     return dest
 
 
+def restore_db(backup_path: Path) -> None:
+    shutil.copy2(backup_path, DB_PATH)
+    logger = AppLogger()
+    logger.log_info(f"Backup restaurado: {backup_path.name}")
+
+
 def list_backups() -> list[Path]:
     if not BACKUP_DIR.exists():
         return []
