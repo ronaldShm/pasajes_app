@@ -9,7 +9,7 @@ from parsers.pdf_parser import PDFParser
 from parsers.msg_parser import MSGParser
 from core.detector import AirlineDetector
 from core.validator import DuplicateValidator, ValidationResult
-from extractors.base import TicketData
+from extractors.base import TicketData, expandir_pasajeros
 from database.repository import PasajeRepository
 from utils.logger import AppLogger
 from utils.file_manager import FileManager
@@ -105,12 +105,8 @@ class TicketProcessor:
             return "error"
 
         all_duplicates = True
+        tickets_data = expandir_pasajeros(tickets_data)
         for ticket_data in tickets_data:
-            if ticket_data.cantidad_pasajeros > 1 and ticket_data.total_pagado is not None:
-                ticket_data.total_pagado = round(
-                    ticket_data.total_pagado / ticket_data.cantidad_pasajeros, 2
-                )
-
             validation = self.validator.validate(
                 ticket=ticket_data.ticket,
                 pasajeros=ticket_data.pasajeros,

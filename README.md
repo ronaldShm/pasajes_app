@@ -1,6 +1,6 @@
 # Gestor de Pasajes Aereos
 
-Aplicacion de escritorio para **extraer, registrar y exportar informacion de pasajes aereos** desde archivos PDF, EML y MSG. Detecta automaticamente la aerolinea y extrae los datos clave del pasaje.
+Aplicacion de escritorio para **extraer, registrar y exportar informacion de pasajes aereos** desde archivos PDF, EML y MSG. Detecta automaticamente la aerolinea y extrae los datos clave del pasaje. Los pasajes con multiples pasajeros se expanden automaticamente en registros individuales.
 
 ## Funcionalidades
 
@@ -18,7 +18,7 @@ Aplicacion de escritorio para **extraer, registrar y exportar informacion de pas
 |-----------|--------|------------------------|
 | LATAM | PDF | `LATAM AIRLINES GROUP`, `AEROLINEA EMISORA LATAM` |
 | SKY | PDF | `SKY AIRLINE`, `AEROLINEA EMISORA SKY` |
-| JetSMART | MSG | `JetSMART`, emails de `jetsmart.com` |
+| JetSMART | MSG | `JetSMART`, emails de `jetsmart.com` (formato OLE2 y MIME) |
 
 ## Datos Extraidos
 
