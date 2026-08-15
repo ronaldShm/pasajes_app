@@ -38,6 +38,19 @@ class TicketData:
         }
 
 
+def normalize_payment_method(value: str) -> str:
+    """Reduce las formas de pago con tarjeta a las siglas usadas por la app."""
+    normalized = (value or "").lower()
+    if "débito" in normalized or "debito" in normalized:
+        if "crédito" not in normalized and "credito" not in normalized:
+            return "TDD"
+        # LATAM puede informar crédito/débito sin distinguir la tarjeta.
+        return "TDC"
+    if "crédito" in normalized or "credito" in normalized:
+        return "TDC"
+    return value.strip()
+
+
 class BaseExtractor(ABC):
     @abstractmethod
     def detect(self, text: str) -> bool:

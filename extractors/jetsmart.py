@@ -1,11 +1,11 @@
 """Extractor de información para JetSMART (correos .msg)."""
 import re
 from typing import Optional
-from extractors.base import BaseExtractor, TicketData
+from extractors.base import BaseExtractor, TicketData, normalize_payment_method
 
 VALID_IATAS = {
-    "SCL", "ANF", "CJC", "LSC", "IQQ", "ARI", "PUQ", "BBA",
-    "ZCO", "ZAL", "PMC", "ZOS", "CCP", "MAD", "LIM", "BOG",
+    "SCL", "ANF", "CJC", "CPO", "LSC", "IQQ", "ARI", "PUQ", "PNT", "BBA",
+    "MHC", "ZCO", "ZAL", "PMC", "ZOS", "CCP",
 }
 
 
@@ -78,7 +78,7 @@ class JetSMARTExtractor(BaseExtractor):
         if total_match:
             total = _parse_money(total_match.group(1))
 
-        forma_pago = "Tarjeta de crédito"
+        forma_pago = normalize_payment_method("Tarjeta de crédito")
 
         results = []
         if pasajeros:

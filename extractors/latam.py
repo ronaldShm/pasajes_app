@@ -1,14 +1,15 @@
 """Extractor de información para LATAM Airlines."""
 import re
 from typing import Optional
-from extractors.base import BaseExtractor, TicketData
+from extractors.base import BaseExtractor, TicketData, normalize_payment_method
 
 CITY_TO_IATA = {
-    "SANTIAGO": "SCL", "ANTOFAGASTA": "ANF", "COPIAPÓ": "CJC", "COPIAPO": "CJC",
-    "CALAMA": "CJC", "IQUIQUE": "IQQ", "LA SERENA": "LSC",
+    "SANTIAGO": "SCL", "SANTIAGO DE CHILE": "SCL", "ANTOFAGASTA": "ANF",
+    "COPIAPO": "CJC", "CALAMA": "CJC", "IQUIQUE": "IQQ", "LA SERENA": "LSC",
     "ARICA": "ARI", "PUNTA ARENAS": "PUQ", "BALMACEDA": "BBA",
     "TEMUCO": "ZCO", "VALDIVIA": "ZAL", "PUERTO MONTT": "PMC",
-    "OSORNO": "ZOS", "CONCEPCIÓN": "CCP", "BUCARAMANGA": "BGA",
+    "OSORNO": "ZOS", "CONCEPCION": "CCP", "CASTRO": "MHC",
+    "PUERTO NATALES": "PNT", "COPIAPÓ": "CJC",
 }
 
 
@@ -54,12 +55,7 @@ class LATAMExtractor(BaseExtractor):
         if flight_match:
             data.vuelo = f"{flight_match.group(1)} {flight_match.group(2)}"
 
-        iatas = re.findall(r"\b([A-Z]{3})\b", text)
-        valid_iatas = [c for c in iatas if c in CITY_TO_IATA.values()]
-        unique_iatas = list(dict.fromkeys(valid_iatas))
-        if len(unique_iatas) >= 2:
-            data.origen = unique_iatas[0]
-            data.destino = unique_iatas[1]
+        data.origen, data.destino = _extract_route(text)
 
         date_match = re.search(r"(\d{2}/\w{3}/\d{4})", text)
         if date_match:
@@ -69,9 +65,14 @@ class LATAMExtractor(BaseExtractor):
         if total_match:
             data.total_pagado = _parse_money(total_match.group(1))
 
-        forma_match = re.search(r"Forma de pago\s+(.*?)(?:\n|$)", text)
+        forma_match = re.search(
+            r"Tarjeta\s+de\s+(?:crédito|credito|débito|debito)"
+            r"(?:\s*/\s*(?:crédito|credito|débito|debito))?",
+            text,
+            re.IGNORECASE,
+        )
         if forma_match:
-            data.forma_pago = forma_match.group(1).strip()
+            data.forma_pago = normalize_payment_method(forma_match.group(0))
 
         return [data]
 
@@ -148,33 +149,7 @@ class LATAMExtractor(BaseExtractor):
                 all_vuelos = re.findall(r"(LA\s+\d+)", text)
                 vuelo = ", ".join(dict.fromkeys(all_vuelos))
 
-        origen = ""
-        destino = ""
-
-        itinerario_match = re.search(
-            r"N[°o]\s*(?:de\s*)?[Vv]uelo\s+Origen\s+Destino(.*?)(?:Información|Condiciones|Detalle)",
-            text, re.DOTALL
-        )
-        if itinerario_match:
-            itin_text = itinerario_match.group(1)
-            cities_in_itin = re.findall(
-                r"(SANTIAGO|ANTOFAGASTA|COPIAPÓ|COPIAPO|CALAMA|IQUIQUE|LA SERENA|ARICA|PUNTA ARENAS|BALMACEDA|TEMUCO|VALDIVIA|PUERTO MONTT|OSORNO|CONCEPCIÓN)",
-                itin_text, re.IGNORECASE
-            )
-            unique_cities_itin = list(dict.fromkeys([c.upper() for c in cities_in_itin]))
-            if len(unique_cities_itin) >= 2:
-                origen = CITY_TO_IATA.get(unique_cities_itin[0], unique_cities_itin[0])
-                destino = CITY_TO_IATA.get(unique_cities_itin[-1], unique_cities_itin[-1])
-
-        if not origen:
-            cities_found = re.findall(
-                r"(SANTIAGO|ANTOFAGASTA|COPIAPÓ|CALAMA|IQUIQUE|LA SERENA|ARICA|PUNTA ARENAS|BALMACEDA|TEMUCO|VALDIVIA|PUERTO MONTT|OSORNO|CONCEPCIÓN)",
-                text, re.IGNORECASE
-            )
-            unique_cities = list(dict.fromkeys([c.upper() for c in cities_found]))
-            if len(unique_cities) >= 2:
-                origen = CITY_TO_IATA.get(unique_cities[0], unique_cities[0])
-                destino = CITY_TO_IATA.get(unique_cities[-1], unique_cities[-1])
+        origen, destino = _extract_route(text)
 
         fecha_vuelo = ""
         fecha_vuelo_match = re.search(
@@ -206,13 +181,20 @@ class LATAMExtractor(BaseExtractor):
 
         forma_pago = ""
         if "CC/BA/OT" in text:
-            forma_pago = "Tarjeta de crédito/débito"
-        elif "Tarjeta de crédito" in text or "Tarjeta de débito" in text:
-            forma_pago = "Tarjeta de crédito/débito"
+            forma_pago = "TDC"
         else:
-            fp_match = re.search(r"Forma de Pago\s+.*?Tipo\s+(.*?)(?:\s+Monto|\s+\n)", text, re.DOTALL)
+            fp_match = re.search(
+                r"Tarjeta\s+de\s+(?:crédito|credito|débito|debito)"
+                r"(?:\s*/\s*(?:crédito|credito|débito|debito))?",
+                text,
+                re.IGNORECASE,
+            )
             if fp_match:
-                forma_pago = fp_match.group(1).strip()
+                forma_pago = normalize_payment_method(fp_match.group(0))
+            else:
+                fp_match = re.search(r"Forma de Pago\s+.*?Tipo\s+(.*?)(?:\s+Monto|\s+\n)", text, re.DOTALL)
+                if fp_match:
+                    forma_pago = normalize_payment_method(fp_match.group(1))
 
         results = []
         if pasajeros_clean and len(pasajeros_clean) > 1:
@@ -265,3 +247,100 @@ def _parse_money(value: str) -> Optional[float]:
         return float(clean)
     except (ValueError, TypeError):
         return None
+
+
+_CITY_PATTERN = (
+    r"SANTIAGO(?:\s+DE\s+CHILE)?|ANTOFAGASTA|COPIA(?:PÓ|PO)|CALAMA|"
+    r"IQUIQUE|LA\s+SERENA|ARICA|PUNTA\s+ARENAS|BALMACEDA|TEMUCO|VALDIVIA|"
+    r"PUERTO\s+MONTT|OSORNO|CONCEPCI(?:ÓN|ON)|CASTRO|PUERTO\s+NATALES"
+)
+
+_ACCENT_MAP = str.maketrans("ÁÉÍÓÚ", "AEIOU")
+
+_AIRPORT_KEYWORDS = {
+    "BENITEZ": "SCL",
+    "BENÍTEZ": "SCL",
+    "EL LOA": "CJC",
+    "SABELLA": "ANF",
+    "ARACENA": "IQQ",
+    "ATACAMA": "CPO",
+    "FLORIDA": "LSC",
+    "CARRIEL": "CCP",
+    "MAQUEHUE": "ZCO",
+    "PICHOY": "ZAL",
+    "HOTT": "ZOS",
+    "TEPUAL": "PMC",
+    "MOCOPULLI": "MHC",
+    "BALMACEDA": "BBA",
+    "GALLARDO": "PNT",
+    "IBAÑEZ": "PUQ",
+    "IBANEZ": "PUQ",
+    "CHACALLUTA": "ARI",
+}
+
+
+def _normalize_city(city: str) -> str:
+    normalized = re.sub(r"\s+", " ", city.upper().translate(_ACCENT_MAP)).strip()
+    return normalized
+
+
+def _find_cities(text: str) -> list[str]:
+    return list(dict.fromkeys(
+        _normalize_city(city) for city in re.findall(_CITY_PATTERN, text, re.IGNORECASE)
+    ))
+
+
+def _find_iatas(text: str) -> list[str]:
+    valid = set(CITY_TO_IATA.values())
+    return list(dict.fromkeys(
+        code for code in re.findall(r"\b([A-Z]{3})\b", text) if code in valid
+    ))
+
+
+def _find_airports(text: str) -> list[str]:
+    """Detecta aeropuertos por palabras clave del nombre del aeropuerto."""
+    results = []
+    for keyword, iata in _AIRPORT_KEYWORDS.items():
+        if keyword in text.upper():
+            results.append((text.upper().index(keyword), iata))
+    results.sort(key=lambda x: x[0])
+    return list(dict.fromkeys(iata for _, iata in results))
+
+
+def _extract_route(text: str) -> tuple[str, str]:
+    """Extrae origen y destino desde el itinerario LATAM."""
+    itinerary_match = re.search(
+        r"Itinerario(.*?)(?:Detalle de tu pago|Aerolíneas en este viaje|"
+        r"Información local|Condiciones)",
+        text, re.DOTALL | re.IGNORECASE,
+    )
+    if not itinerary_match:
+        return "", ""
+
+    itinerary = itinerary_match.group(1)
+
+    # Estrategia 1: nombres de aeropuerto (más fiable con pdfplumber).
+    airports = _find_airports(itinerary)
+    if len(airports) >= 2:
+        return airports[0], airports[-1]
+
+    # Estrategia 2: buscar ciudades antes del primer vuelo.
+    flight_positions = [
+        m.start() for m in re.finditer(r'(?:LA|H2)\s+\d+', itinerary)
+    ]
+
+    if flight_positions:
+        pre_text = itinerary[:flight_positions[0]]
+        cities = _find_cities(pre_text)
+        if len(cities) >= 2:
+            return (
+                CITY_TO_IATA.get(cities[0], cities[0]),
+                CITY_TO_IATA.get(cities[-1], cities[-1]),
+            )
+
+    # Estrategia 3: códigos IATA en el itinerario.
+    iatas = _find_iatas(itinerary)
+    if len(iatas) >= 2:
+        return iatas[0], iatas[-1]
+
+    return "", ""

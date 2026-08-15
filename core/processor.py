@@ -106,6 +106,11 @@ class TicketProcessor:
 
         all_duplicates = True
         for ticket_data in tickets_data:
+            if ticket_data.cantidad_pasajeros > 1 and ticket_data.total_pagado is not None:
+                ticket_data.total_pagado = round(
+                    ticket_data.total_pagado / ticket_data.cantidad_pasajeros, 2
+                )
+
             validation = self.validator.validate(
                 ticket=ticket_data.ticket,
                 pasajeros=ticket_data.pasajeros,
@@ -123,7 +128,7 @@ class TicketProcessor:
 
             all_duplicates = False
             record = ticket_data.to_dict()
-            record["fecha_registro"] = datetime.now().strftime("%d-%m-%Y %H:%M")
+            record["fecha_registro"] = datetime.now().strftime("%d-%m-%Y")
             record["estado"] = "procesado"
 
             self.repo.guardar(record)

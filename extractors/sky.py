@@ -1,15 +1,22 @@
 """Extractor de información para SKY Airline."""
 import re
 from typing import Optional
-from extractors.base import BaseExtractor, TicketData
+from extractors.base import BaseExtractor, TicketData, normalize_payment_method
 
 CITY_TO_IATA = {
-    "SANTIAGO": "SCL", "ANTOFAGASTA": "ANF", "COPIAPÓ": "CJC",
+    "SANTIAGO": "SCL", "ANTOFAGASTA": "ANF", "COPIAPO": "CJC",
     "CALAMA": "CJC", "IQUIQUE": "IQQ", "LA SERENA": "LSC",
     "ARICA": "ARI", "PUNTA ARENAS": "PUQ", "BALMACEDA": "BBA",
     "TEMUCO": "ZCO", "VALDIVIA": "ZAL", "PUERTO MONTT": "PMC",
-    "OSORNO": "ZOS", "CONCEPCIÓN": "CCP",
+    "OSORNO": "ZOS", "CONCEPCION": "CCP", "CASTRO": "MHC",
+    "PUERTO NATALES": "PNT", "COPIAPÓ": "CJC",
 }
+
+_ACCENT_MAP = str.maketrans("ÁÉÍÓÚ", "AEIOU")
+
+
+def _normalize_city(city: str) -> str:
+    return city.upper().translate(_ACCENT_MAP)
 
 
 class SKYExtractor(BaseExtractor):
@@ -62,14 +69,14 @@ class SKYExtractor(BaseExtractor):
                 flight_text
             )
             if origin_dest_match:
-                origin_city = origin_dest_match.group(1).strip().upper()
-                dest_city = origin_dest_match.group(2).strip().upper()
+                origin_city = _normalize_city(origin_dest_match.group(1).strip())
+                dest_city = _normalize_city(origin_dest_match.group(2).strip())
                 dest_iata = origin_dest_match.group(3)
                 data.origen = CITY_TO_IATA.get(origin_city, origin_city)
                 data.destino = dest_iata
 
         if not data.origen:
-            all_iatas_match = re.findall(r"\b(SCL|ANF|CJC|LSC|IQQ|ARI|PUQ|BBA|ZCO|ZAL|PMC|ZOS|CCP)\b", text)
+            all_iatas_match = re.findall(r"\b(SCL|ANF|CJC|CPO|LSC|IQQ|ARI|PUQ|PNT|BBA|MHC|ZCO|ZAL|PMC|ZOS|CCP)\b", text)
             unique_iatas = list(dict.fromkeys(all_iatas_match))
             if len(unique_iatas) >= 2:
                 data.origen = unique_iatas[0]
@@ -83,9 +90,14 @@ class SKYExtractor(BaseExtractor):
         if total_match:
             data.total_pagado = _parse_money(total_match.group(1))
 
-        forma_match = re.search(r"Forma de pago\s+(.*?)(?:\n|$)", text)
+        forma_match = re.search(
+            r"Tarjeta\s+de\s+(?:crédito|credito|débito|debito)"
+            r"(?:\s*/\s*(?:crédito|credito|débito|debito))?",
+            text,
+            re.IGNORECASE,
+        )
         if forma_match:
-            data.forma_pago = forma_match.group(1).strip()
+            data.forma_pago = normalize_payment_method(forma_match.group(0))
 
         return [data]
 
