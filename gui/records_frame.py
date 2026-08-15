@@ -80,70 +80,72 @@ class RecordsFrame(ctk.CTkFrame):
         ).grid(row=0, column=0, padx=(10, 5), pady=5, sticky="w")
 
         self.search_var = ctk.StringVar()
-        self.search_var.trace_add("write", lambda *_: self._apply_filters())
         search_entry = ctk.CTkEntry(
             filter_frame, textvariable=self.search_var,
-            width=200, placeholder_text="Pasajero..."
+            width=200, placeholder_text="Pasajero, ticket, reserva..."
         )
         search_entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        search_entry.bind("<Return>", lambda e: self._apply_filters())
+
+        ctk.CTkButton(
+            filter_frame, text="Buscar", width=60,
+            command=self._apply_filters,
+            fg_color="#2E86AB", hover_color="#1a6d8a"
+        ).grid(row=0, column=2, padx=(2, 5), pady=5)
 
         ctk.CTkLabel(
             filter_frame, text="Aerolínea:",
             font=ctk.CTkFont(size=11)
-        ).grid(row=0, column=2, padx=(15, 5), pady=5, sticky="w")
+        ).grid(row=0, column=3, padx=(15, 5), pady=5, sticky="w")
 
         self.airline_var = ctk.StringVar(value="Todas")
-        self.airline_var.trace_add("write", lambda *_: self._apply_filters())
         self.airline_menu = ctk.CTkOptionMenu(
             filter_frame, variable=self.airline_var,
             values=["Todas"], width=100
         )
-        self.airline_menu.grid(row=0, column=3, padx=5, pady=5, sticky="w")
+        self.airline_menu.grid(row=0, column=4, padx=5, pady=5, sticky="w")
 
         ctk.CTkLabel(
             filter_frame, text="Origen:",
             font=ctk.CTkFont(size=11)
-        ).grid(row=0, column=4, padx=(15, 5), pady=5, sticky="w")
+        ).grid(row=0, column=5, padx=(15, 5), pady=5, sticky="w")
 
         self.origin_var = ctk.StringVar(value="Todos")
-        self.origin_var.trace_add("write", lambda *_: self._apply_filters())
         self.origin_menu = ctk.CTkOptionMenu(
             filter_frame, variable=self.origin_var,
             values=["Todos"], width=70
         )
-        self.origin_menu.grid(row=0, column=5, padx=5, pady=5, sticky="w")
+        self.origin_menu.grid(row=0, column=6, padx=5, pady=5, sticky="w")
 
         ctk.CTkLabel(
             filter_frame, text="Destino:",
             font=ctk.CTkFont(size=11)
-        ).grid(row=0, column=6, padx=(15, 5), pady=5, sticky="w")
+        ).grid(row=0, column=7, padx=(15, 5), pady=5, sticky="w")
 
         self.dest_var = ctk.StringVar(value="Todos")
-        self.dest_var.trace_add("write", lambda *_: self._apply_filters())
         self.dest_menu = ctk.CTkOptionMenu(
             filter_frame, variable=self.dest_var,
             values=["Todos"], width=70
         )
-        self.dest_menu.grid(row=0, column=7, padx=5, pady=5, sticky="w")
+        self.dest_menu.grid(row=0, column=8, padx=5, pady=5, sticky="w")
 
         ctk.CTkLabel(
             filter_frame, text="Solicitado:",
             font=ctk.CTkFont(size=11)
-        ).grid(row=0, column=8, padx=(15, 5), pady=5, sticky="w")
+        ).grid(row=0, column=9, padx=(15, 5), pady=5, sticky="w")
 
         self.solicitado_var = ctk.StringVar(value="Todos")
-        self.solicitado_var.trace_add("write", lambda *_: self._apply_filters())
         self.solicitado_menu = ctk.CTkOptionMenu(
             filter_frame, variable=self.solicitado_var,
             values=["Todos"], width=120
         )
-        self.solicitado_menu.grid(row=0, column=9, padx=5, pady=5, sticky="w")
+        self.solicitado_menu.grid(row=0, column=10, padx=5, pady=5, sticky="w")
 
         ctk.CTkButton(
             filter_frame, text="Limpiar", width=70,
             command=self._clear_filters,
             fg_color="#555", hover_color="#333"
-        ).grid(row=0, column=10, padx=(15, 10), pady=5)
+        ).grid(row=0, column=11, padx=(15, 10), pady=5)
 
         table_frame = ctk.CTkFrame(self)
         table_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
