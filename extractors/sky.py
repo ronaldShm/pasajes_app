@@ -1,7 +1,7 @@
 """Extractor de información para SKY Airline."""
 import re
 from typing import Optional
-from extractors.base import BaseExtractor, TicketData, normalize_payment_method
+from extractors.base import BaseExtractor, TicketData, normalize_payment_method, normalize_date
 
 CITY_TO_IATA = {
     "SANTIAGO": "SCL", "ANTOFAGASTA": "ANF", "COPIAPO": "CJC",
@@ -84,7 +84,7 @@ class SKYExtractor(BaseExtractor):
 
         date_match = re.search(r"(\d{2}/\w{3}/\d{4})", text)
         if date_match:
-            data.fecha_vuelo = date_match.group(1)
+            data.fecha_vuelo = normalize_date(date_match.group(1))
 
         total_match = re.search(r"Tarifa total\s+CLP\s+([\d.,]+)", text)
         if total_match:

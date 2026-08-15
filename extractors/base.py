@@ -1,4 +1,5 @@
 """Clase base abstracta para extractores de aerolíneas."""
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
@@ -51,6 +52,41 @@ def normalize_payment_method(value: str) -> str:
     if "crédito" in normalized or "credito" in normalized:
         return "TDC"
     return value.strip()
+
+
+_MONTHS = {
+    "ene": "01", "feb": "02", "mar": "03", "abr": "04",
+    "may": "05", "jun": "06", "jul": "07", "ago": "08",
+    "sep": "09", "oct": "10", "nov": "11", "dic": "12",
+    "jan": "01", "feb": "02", "mar": "03", "apr": "04",
+    "jun": "06", "jul": "07", "aug": "08",
+    "sep": "09", "oct": "10", "nov": "11", "dec": "12",
+}
+
+
+def normalize_date(value: str) -> str:
+    """Normaliza una fecha a formato DD/MM/YY.
+    Acepta: DD/MM/YYYY, DD/MM/YY, DD/MMM/YYYY, DD/MMM/YY,
+            DD-MM-YYYY, DD-MM-YY, DD-MMM-YY, DD-MMM-YYYY.
+    """
+    if not value:
+        return ""
+    v = value.strip().replace("-", "/")
+    parts = v.split("/")
+    if len(parts) != 3:
+        return value
+    dd, mm, yy = parts
+    dd = dd.zfill(2)
+    # Mes textual a numerico
+    mm_lower = mm.lower()[:3]
+    if mm_lower in _MONTHS:
+        mm = _MONTHS[mm_lower]
+    else:
+        mm = mm.zfill(2)
+    # Anio: 4 digitos -> 2 digitos
+    if len(yy) == 4:
+        yy = yy[2:]
+    return f"{dd}/{mm}/{yy}"
 
 
 def expandir_pasajeros(tickets: list[TicketData]) -> list[TicketData]:

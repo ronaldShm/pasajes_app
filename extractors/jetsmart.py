@@ -1,7 +1,7 @@
 """Extractor de información para JetSMART (correos .msg)."""
 import re
 from typing import Optional
-from extractors.base import BaseExtractor, TicketData, normalize_payment_method
+from extractors.base import BaseExtractor, TicketData, normalize_payment_method, normalize_date
 
 VALID_IATAS = {
     "SCL", "ANF", "CJC", "CPO", "LSC", "IQQ", "ARI", "PUQ", "PNT", "BBA",
@@ -35,7 +35,7 @@ class JetSMARTExtractor(BaseExtractor):
         fecha_vuelo = ""
         date_match = re.search(r"(?:Fecha:\s*)(\d{2}/\d{2}/\d{4})", text)
         if date_match:
-            fecha_vuelo = date_match.group(1)
+            fecha_vuelo = normalize_date(date_match.group(1))
 
         all_iatas = re.findall(r"\b([A-Z]{3})\b", text)
         valid_iatas = [c for c in all_iatas if c in VALID_IATAS]
