@@ -159,3 +159,103 @@ class PasajeRepository:
     def obtener_valores_lista(self, tipo: str) -> list[str]:
         items = self.obtener_lista(tipo)
         return [item["valor"] for item in items]
+
+    def resumen_general(self) -> dict:
+        with self.db.get_connection() as conn:
+            row = conn.execute("""
+                SELECT
+                    COUNT(*) as total_pasajes,
+                    COUNT(DISTINCT pasajeros) as total_pasajeros,
+                    COALESCE(SUM(total_pagado), 0) as total_gastado,
+                    COALESCE(AVG(total_pagado), 0) as promedio,
+                    COALESCE(MIN(total_pagado), 0) as minimo,
+                    COALESCE(MAX(total_pagado), 0) as maximo
+                FROM pasajes
+            """).fetchone()
+            return dict(row)
+
+    def gasto_por_ceco(self) -> list[dict]:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT ceco,
+                    COUNT(*) as pasajes,
+                    COALESCE(SUM(total_pagado), 0) as total,
+                    COALESCE(AVG(total_pagado), 0) as promedio
+                FROM pasajes
+                WHERE ceco != ''
+                GROUP BY ceco
+                ORDER BY total DESC
+            """)
+            return [dict(r) for r in cursor.fetchall()]
+
+    def gasto_por_solicitante(self) -> list[dict]:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT solicitado_por,
+                    COUNT(*) as pasajes,
+                    COALESCE(SUM(total_pagado), 0) as total,
+                    COALESCE(AVG(total_pagado), 0) as promedio
+                FROM pasajes
+                WHERE solicitado_por != ''
+                GROUP BY solicitado_por
+                ORDER BY total DESC
+            """)
+            return [dict(r) for r in cursor.fetchall()]
+
+    def gasto_por_aerolinea(self) -> list[dict]:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT aerolinea,
+                    COUNT(*) as pasajes,
+                    COALESCE(SUM(total_pagado), 0) as total,
+                    COALESCE(AVG(total_pagado), 0) as promedio,
+                    COALESCE(MIN(total_pagado), 0) as minimo,
+                    COALESCE(MAX(total_pagado), 0) as maximo
+                FROM pasajes
+                GROUP BY aerolinea
+                ORDER BY total DESC
+            """)
+            return [dict(r) for r in cursor.fetchall()]
+
+    def top_rutas(self, limit: int = 10) -> list[dict]:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT origen, destino,
+                    COUNT(*) as viajes,
+                    COALESCE(SUM(total_pagado), 0) as total,
+                    COALESCE(AVG(total_pagado), 0) as promedio
+                FROM pasajes
+                WHERE origen != '' AND destino != ''
+                GROUP BY origen, destino
+                ORDER BY viajes DESC
+                LIMIT ?
+            """, (limit,))
+            return [dict(r) for r in cursor.fetchall()]
+
+    def top_pasajeros(self, limit: int = 10) -> list[dict]:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT pasajeros,
+                    COUNT(*) as viajes,
+                    COALESCE(SUM(total_pagado), 0) as total
+                FROM pasajes
+                WHERE pasajeros != ''
+                GROUP BY pasajeros
+                ORDER BY viajes DESC
+                LIMIT ?
+            """, (limit,))
+            return [dict(r) for r in cursor.fetchall()]
+
+    def gasto_por_mes(self) -> list[dict]:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT substr(fecha_vuelo, 4, 2) as mes,
+                       substr(fecha_vuelo, 7, 2) as anio,
+                       COUNT(*) as pasajes,
+                       COALESCE(SUM(total_pagado), 0) as total
+                FROM pasajes
+                WHERE fecha_vuelo != ''
+                GROUP BY anio, mes
+                ORDER BY anio, mes
+            """)
+            return [dict(r) for r in cursor.fetchall()]

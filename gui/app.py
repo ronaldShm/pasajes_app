@@ -5,6 +5,7 @@ from config import APP_NAME, APP_VERSION, load_config, save_config, SUPPORTED_EX
 from gui.home_frame import HomeFrame
 from gui.records_frame import RecordsFrame
 from gui.lists_frame import ListsFrame
+from gui.reports_frame import ReportsFrame
 from utils.file_manager import FileManager
 
 
@@ -62,6 +63,13 @@ class App(ctk.CTk):
         )
         self.btn_lists.pack(side="left", padx=5)
 
+        self.btn_reports = ctk.CTkButton(
+            nav_frame, text="Reportes", width=100,
+            command=lambda: self._show_frame("reports"),
+            fg_color="#555555", hover_color="#444444"
+        )
+        self.btn_reports.pack(side="left", padx=5)
+
         self.btn_exit = ctk.CTkButton(
             nav_frame, text="Salir", width=80,
             command=self._on_exit,
@@ -81,6 +89,8 @@ class App(ctk.CTk):
         self.frames["records"] = self.records_frame
         self.lists_frame = ListsFrame(self.container, self)
         self.frames["lists"] = self.lists_frame
+        self.reports_frame = ReportsFrame(self.container, self)
+        self.frames["reports"] = self.reports_frame
 
         self._show_frame("home")
 
@@ -93,6 +103,7 @@ class App(ctk.CTk):
         self.btn_home.configure(fg_color="#555555")
         self.btn_records.configure(fg_color="#555555")
         self.btn_lists.configure(fg_color="#555555")
+        self.btn_reports.configure(fg_color="#555555")
 
         if name == "home":
             self.btn_home.configure(fg_color="#2E86AB")
@@ -102,6 +113,9 @@ class App(ctk.CTk):
         elif name == "lists":
             self.btn_lists.configure(fg_color="#2E86AB")
             self.lists_frame.refresh_lists()
+        elif name == "reports":
+            self.btn_reports.configure(fg_color="#2E86AB")
+            self.reports_frame.refresh_reports()
 
     def select_folder(self):
         folder = filedialog.askdirectory(title="Seleccionar carpeta de pasajes")
