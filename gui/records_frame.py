@@ -180,6 +180,10 @@ class RecordsFrame(ctk.CTkFrame):
     def _load_dropdown_options(self):
         self._solicitado_options = [""] + self.repo.obtener_valores_lista("solicitado")
         self._ceco_options = [""] + self.repo.obtener_valores_lista("ceco")
+        if hasattr(self, "bulk_ceco_menu"):
+            self.bulk_ceco_menu.configure(values=self._ceco_options)
+        if hasattr(self, "bulk_solicitado_menu"):
+            self.bulk_solicitado_menu.configure(values=self._solicitado_options)
 
     def _update_filter_options(self):
         if not self._all_records:
@@ -510,6 +514,7 @@ class RecordsFrame(ctk.CTkFrame):
                 updated += self.repo.actualizar_solicitado_por_lote(selected, solicitado)
             
             self._selected_ids.clear()
+            self._select_all_var.set(False)
             self.selected_label.configure(text="Seleccionados: 0")
             self.refresh_data()
             messagebox.showinfo("Éxito", f"Se actualizaron {updated} registros.")
