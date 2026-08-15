@@ -531,6 +531,8 @@ class RecordsFrame(ctk.CTkFrame):
             
             self._selected_ids.clear()
             self._select_all_var.set(False)
+            self.bulk_ceco_var.set("")
+            self.bulk_solicitado_var.set("")
             self.selected_label.configure(text="Seleccionados: 0")
             self.refresh_data()
             messagebox.showinfo("Éxito", f"Se actualizaron {updated} registros.")
