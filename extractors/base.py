@@ -51,6 +51,40 @@ def normalize_payment_method(value: str) -> str:
     return value.strip()
 
 
+def expandir_pasajeros(tickets: list[TicketData]) -> list[TicketData]:
+    """Expande registros multi-pasajero en un registro por cada pasajero."""
+    resultado = []
+    for t in tickets:
+        if t.cantidad_pasajeros <= 1:
+            resultado.append(t)
+            continue
+        nombres = [n.strip() for n in t.pasajeros.split(",") if n.strip()]
+        nums = [n.strip() for n in t.ticket.split(",") if n.strip()]
+        total_individual = (
+            round(t.total_pagado / t.cantidad_pasajeros, 2)
+            if t.total_pagado is not None
+            else None
+        )
+        for i, nombre in enumerate(nombres):
+            ticket_num = nums[i] if i < len(nums) else ""
+            resultado.append(TicketData(
+                aerolinea=t.aerolinea,
+                pasajeros=nombre,
+                cantidad_pasajeros=1,
+                ticket=ticket_num,
+                reserva=t.reserva,
+                fecha_emision=t.fecha_emision,
+                vuelo=t.vuelo,
+                origen=t.origen,
+                destino=t.destino,
+                fecha_vuelo=t.fecha_vuelo,
+                total_pagado=total_individual,
+                forma_pago=t.forma_pago,
+                archivo_origen=t.archivo_origen,
+            ))
+    return resultado
+
+
 class BaseExtractor(ABC):
     @abstractmethod
     def detect(self, text: str) -> bool:
