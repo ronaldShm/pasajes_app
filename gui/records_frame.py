@@ -11,9 +11,13 @@ class RecordsFrame(ctk.CTkFrame):
         self.app = app
         self.repo = PasajeRepository()
         self._all_records = []
+        self._filtered_records = []
         self._solicitado_options = [""]
         self._ceco_options = [""]
         self._suppress_filters = False
+        self._page_size = 50
+        self._current_page = 1
+        self._selected_ids = set()
         self._setup_ui()
 
     def _setup_ui(self):
@@ -139,6 +143,12 @@ class RecordsFrame(ctk.CTkFrame):
 
         self._create_headers()
 
+        bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
+        bottom_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 10))
+
+        self._build_pagination(bottom_frame)
+        self._build_bulk_edit(bottom_frame)
+
     def _create_headers(self):
         headers = [
             "Fecha", "Aerolínea", "Pasajeros", "Tickets",
@@ -242,7 +252,9 @@ class RecordsFrame(ctk.CTkFrame):
                 if r.get("solicitado_por", "") == solicitado
             ]
 
-        self._render_records(filtered)
+        self._filtered_records = filtered
+        self._current_page = 1
+        self._render_current_page()
 
     def _clear_filters(self):
         self.search_var.set("")
@@ -260,11 +272,41 @@ class RecordsFrame(ctk.CTkFrame):
         self._suppress_filters = False
         self._apply_filters()
 
+    def _render_current_page(self):
+        total = len(self._filtered_records)
+        total_pages = max(1, (total + self._page_size - 1) // self._page_size)
+        
+        if self._current_page > total_pages:
+            self._current_page = total_pages
+        if self._current_page < 1:
+            self._current_page = 1
+
+        start_idx = (self._current_page - 1) * self._page_size
+        end_idx = min(start_idx + self._page_size, total)
+        page_records = self._filtered_records[start_idx:end_idx]
+
+        self.total_label.configure(text=f"Total: {total}")
+        self.page_label.configure(text=f"Página {self._current_page} de {total_pages}")
+        
+        self.prev_btn.configure(state="normal" if self._current_page > 1 else "disabled")
+        self.next_btn.configure(state="normal" if self._current_page < total_pages else "disabled")
+
+        self._render_records(page_records)
+
+    def _prev_page(self):
+        if self._current_page > 1:
+            self._current_page -= 1
+            self._render_current_page()
+
+    def _next_page(self):
+        total_pages = max(1, (len(self._filtered_records) + self._page_size - 1) // self._page_size)
+        if self._current_page < total_pages:
+            self._current_page += 1
+            self._render_current_page()
+
     def _render_records(self, records):
         for widget in self.table.winfo_children()[1:]:
             widget.destroy()
-
-        self.total_label.configure(text=f"Total: {len(records)}")
 
         for idx, record in enumerate(records):
             bg_color = "#2b2b2b" if idx % 2 == 0 else "#353535"
@@ -322,6 +364,67 @@ class RecordsFrame(ctk.CTkFrame):
             )
             label.grid(row=0, column=12, padx=2, pady=3, sticky="w")
 
+    def _build_pagination(self, parent):
+        self.prev_btn = ctk.CTkButton(
+            parent, text="← Anterior", width=100,
+            command=self._prev_page,
+            fg_color="#555", hover_color="#333"
+        )
+        self.prev_btn.pack(side="left", padx=5)
+
+        self.page_label = ctk.CTkLabel(
+            parent, text="Página 1 de 1",
+            font=ctk.CTkFont(size=12)
+        )
+        self.page_label.pack(side="left", padx=20)
+
+        self.next_btn = ctk.CTkButton(
+            parent, text="Siguiente →", width=100,
+            command=self._next_page,
+            fg_color="#555", hover_color="#333"
+        )
+        self.next_btn.pack(side="left", padx=5)
+
+    def _build_bulk_edit(self, parent):
+        bulk_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        bulk_frame.pack(side="right", padx=5)
+
+        self.selected_label = ctk.CTkLabel(
+            bulk_frame, text="Seleccionados: 0",
+            font=ctk.CTkFont(size=11)
+        )
+        self.selected_label.pack(side="left", padx=5)
+
+        ctk.CTkLabel(
+            bulk_frame, text="CECO:",
+            font=ctk.CTkFont(size=11)
+        ).pack(side="left", padx=(10, 5))
+
+        self.bulk_ceco_var = ctk.StringVar(value="")
+        self.bulk_ceco_menu = ctk.CTkOptionMenu(
+            bulk_frame, variable=self.bulk_ceco_var,
+            values=self._ceco_options, width=100
+        )
+        self.bulk_ceco_menu.pack(side="left", padx=5)
+
+        ctk.CTkLabel(
+            bulk_frame, text="Solicitado:",
+            font=ctk.CTkFont(size=11)
+        ).pack(side="left", padx=(10, 5))
+
+        self.bulk_solicitado_var = ctk.StringVar(value="")
+        self.bulk_solicitado_menu = ctk.CTkOptionMenu(
+            bulk_frame, variable=self.bulk_solicitado_var,
+            values=self._solicitado_options, width=100
+        )
+        self.bulk_solicitado_menu.pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            bulk_frame, text="Aplicar", width=80,
+            command=self._apply_bulk_edit,
+            fg_color="#27ae60", hover_color="#1e8449"
+        ).pack(side="left", padx=5)
+
     def _update_solicitado_por(self, record_id: int, value: str):
         if record_id:
             self.repo.actualizar_solicitado_por(record_id, value)
@@ -329,6 +432,39 @@ class RecordsFrame(ctk.CTkFrame):
     def _update_ceco(self, record_id: int, value: str):
         if record_id:
             self.repo.actualizar_ceco(record_id, value)
+
+    def _apply_bulk_edit(self):
+        selected = list(self._selected_ids)
+        if not selected:
+            messagebox.showwarning("Sin selección", "No hay registros seleccionados.")
+            return
+        
+        ceco = self.bulk_ceco_var.get()
+        solicitado = self.bulk_solicitado_var.get()
+        
+        if not ceco and not solicitado:
+            messagebox.showwarning("Sin cambios", "Seleccione un valor de CECO o Solicitado para aplicar.")
+            return
+        
+        confirm = messagebox.askyesno(
+            "Confirmar edición masiva",
+            f"¿Aplicar cambios a {len(selected)} registros?\n"
+            f"CECO: {ceco or '(sin cambio)'}\n"
+            f"Solicitado: {solicitado or '(sin cambio)'}",
+            icon="question"
+        )
+        
+        if confirm:
+            updated = 0
+            if ceco:
+                updated += self.repo.actualizar_ceco_lote(selected, ceco)
+            if solicitado:
+                updated += self.repo.actualizar_solicitado_por_lote(selected, solicitado)
+            
+            self._selected_ids.clear()
+            self.selected_label.configure(text="Seleccionados: 0")
+            self.refresh_data()
+            messagebox.showinfo("Éxito", f"Se actualizaron {updated} registros.")
 
     def _export_excel(self):
         try:

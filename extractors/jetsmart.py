@@ -1,7 +1,7 @@
 """Extractor de información para JetSMART (correos .msg)."""
 import re
 from typing import Optional
-from extractors.base import BaseExtractor, TicketData, normalize_payment_method, normalize_date
+from extractors.base import BaseExtractor, TicketData, normalize_payment_method, normalize_date, parse_money
 
 VALID_IATAS = {
     "SCL", "ANF", "CJC", "CPO", "LSC", "IQQ", "ARI", "PUQ", "PNT", "BBA",
@@ -76,7 +76,7 @@ class JetSMARTExtractor(BaseExtractor):
         if not total_match:
             total_match = re.search(r"Total con tasas e impuestos:\s*CLP\s*\$?\s*([\d.,]+)", text)
         if total_match:
-            total = _parse_money(total_match.group(1))
+            total = parse_money(total_match.group(1))
 
         forma_pago = normalize_payment_method("Tarjeta de crédito")
 
@@ -121,13 +121,3 @@ class JetSMARTExtractor(BaseExtractor):
             results.append(t)
 
         return results
-
-
-def _parse_money(value: str) -> Optional[float]:
-    if not value:
-        return None
-    try:
-        clean = value.replace(",", "").replace(".", "")
-        return float(clean)
-    except (ValueError, TypeError):
-        return None

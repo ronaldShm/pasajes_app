@@ -1,4 +1,5 @@
 """Exportador y gestor de archivos Excel."""
+from datetime import datetime
 from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -114,3 +115,80 @@ class ExcelExporter:
             record = dict(zip(headers, row))
             records.append(record)
         return records
+
+    def export_report_to_excel(self, report_data: dict, filename: str = None):
+        if not filename:
+            filename = f"reporte_pasajes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        report_path = Path.home() / "Downloads" / filename
+        wb = Workbook()
+        
+        # Resumen General
+        ws_summary = wb.active
+        ws_summary.title = "Resumen General"
+        ws_summary.append(["Métrica", "Valor"])
+        summary = report_data.get("resumen", {})
+        ws_summary.append(["Total Pasajes", summary.get("total_pasajes", 0)])
+        ws_summary.append(["Total Gastado", f"${summary.get('total_gastado', 0):,.0f}"])
+        ws_summary.append(["Promedio por Pasaje", f"${summary.get('promedio', 0):,.0f}"])
+        ws_summary.append(["Pasajeros Únicos", summary.get("total_pasajeros", 0)])
+        
+        # Gasto por CECO
+        ws_ceco = wb.create_sheet("Gasto por CECO")
+        ws_ceco.append(["CECO", "Pasajes", "Total", "Promedio"])
+        for item in report_data.get("ceco", []):
+            ws_ceco.append([
+                item.get("ceco", ""),
+                item.get("pasajes", 0),
+                f"${item.get('total', 0):,.0f}",
+                f"${item.get('promedio', 0):,.0f}"
+            ])
+        
+        # Gasto por Solicitante
+        ws_solicitante = wb.create_sheet("Gasto por Solicitante")
+        ws_solicitante.append(["Solicitante", "Pasajes", "Total", "Promedio"])
+        for item in report_data.get("solicitante", []):
+            ws_solicitante.append([
+                item.get("solicitado_por", ""),
+                item.get("pasajes", 0),
+                f"${item.get('total', 0):,.0f}",
+                f"${item.get('promedio', 0):,.0f}"
+            ])
+        
+        # Gasto por Aerolínea
+        ws_aerolinea = wb.create_sheet("Gasto por Aerolínea")
+        ws_aerolinea.append(["Aerolínea", "Pasajes", "Total", "Promedio", "Mínimo", "Máximo"])
+        for item in report_data.get("aerolinea", []):
+            ws_aerolinea.append([
+                item.get("aerolinea", ""),
+                item.get("pasajes", 0),
+                f"${item.get('total', 0):,.0f}",
+                f"${item.get('promedio', 0):,.0f}",
+                f"${item.get('minimo', 0):,.0f}",
+                f"${item.get('maximo', 0):,.0f}"
+            ])
+        
+        # Top Rutas
+        ws_rutas = wb.create_sheet("Top Rutas")
+        ws_rutas.append(["Origen", "Destino", "Viajes", "Total", "Promedio"])
+        for item in report_data.get("rutas", []):
+            ws_rutas.append([
+                item.get("origen", ""),
+                item.get("destino", ""),
+                item.get("viajes", 0),
+                f"${item.get('total', 0):,.0f}",
+                f"${item.get('promedio', 0):,.0f}"
+            ])
+        
+        # Top Pasajeros
+        ws_pasajeros = wb.create_sheet("Top Pasajeros")
+        ws_pasajeros.append(["Pasajero", "Viajes", "Total"])
+        for item in report_data.get("pasajeros", []):
+            ws_pasajeros.append([
+                item.get("pasajeros", ""),
+                item.get("viajes", 0),
+                f"${item.get('total', 0):,.0f}"
+            ])
+        
+        wb.save(str(report_path))
+        return report_path

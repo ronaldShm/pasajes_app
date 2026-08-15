@@ -1,16 +1,10 @@
 """Extractor de información para LATAM Airlines."""
 import re
 from typing import Optional
-from extractors.base import BaseExtractor, TicketData, normalize_payment_method, normalize_date
-
-CITY_TO_IATA = {
-    "SANTIAGO": "SCL", "SANTIAGO DE CHILE": "SCL", "ANTOFAGASTA": "ANF",
-    "COPIAPO": "CJC", "CALAMA": "CJC", "IQUIQUE": "IQQ", "LA SERENA": "LSC",
-    "ARICA": "ARI", "PUNTA ARENAS": "PUQ", "BALMACEDA": "BBA",
-    "TEMUCO": "ZCO", "VALDIVIA": "ZAL", "PUERTO MONTT": "PMC",
-    "OSORNO": "ZOS", "CONCEPCION": "CCP", "CASTRO": "MHC",
-    "PUERTO NATALES": "PNT", "COPIAPÓ": "CJC",
-}
+from extractors.base import (
+    BaseExtractor, TicketData, normalize_payment_method, normalize_date,
+    parse_money, CITY_TO_IATA, _ACCENT_MAP,
+)
 
 
 class LATAMExtractor(BaseExtractor):
@@ -63,7 +57,7 @@ class LATAMExtractor(BaseExtractor):
 
         total_match = re.search(r"Tarifa total\s+CLP\s+([\d.,]+)", text)
         if total_match:
-            data.total_pagado = _parse_money(total_match.group(1))
+            data.total_pagado = parse_money(total_match.group(1))
 
         forma_match = re.search(
             r"Tarjeta\s+de\s+(?:crédito|credito|débito|debito)"
@@ -174,11 +168,11 @@ class LATAMExtractor(BaseExtractor):
         total = None
         total_match = re.search(r"Total pagado\s+(?:CLP\s+)?([\d.,]+)", text)
         if total_match:
-            total = _parse_money(total_match.group(1))
+            total = parse_money(total_match.group(1))
         else:
             total_match2 = re.search(r"Total\s+CLP\s+([\d.,]+)", text)
             if total_match2:
-                total = _parse_money(total_match2.group(1))
+                total = parse_money(total_match2.group(1))
 
         forma_pago = ""
         if "CC/BA/OT" in text:
@@ -240,23 +234,11 @@ class LATAMExtractor(BaseExtractor):
         return results
 
 
-def _parse_money(value: str) -> Optional[float]:
-    if not value:
-        return None
-    try:
-        clean = value.replace(",", "").replace(".", "")
-        return float(clean)
-    except (ValueError, TypeError):
-        return None
-
-
 _CITY_PATTERN = (
     r"SANTIAGO(?:\s+DE\s+CHILE)?|ANTOFAGASTA|COPIA(?:PÓ|PO)|CALAMA|"
     r"IQUIQUE|LA\s+SERENA|ARICA|PUNTA\s+ARENAS|BALMACEDA|TEMUCO|VALDIVIA|"
     r"PUERTO\s+MONTT|OSORNO|CONCEPCI(?:ÓN|ON)|CASTRO|PUERTO\s+NATALES"
 )
-
-_ACCENT_MAP = str.maketrans("ÁÉÍÓÚ", "AEIOU")
 
 _AIRPORT_KEYWORDS = {
     "BENITEZ": "SCL",

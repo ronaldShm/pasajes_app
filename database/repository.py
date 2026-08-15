@@ -130,6 +130,30 @@ class PasajeRepository:
             conn.commit()
             return cursor.rowcount > 0
 
+    def actualizar_solicitado_por_lote(self, ids: list[int], solicitado_por: str) -> int:
+        if not ids:
+            return 0
+        with self.db.get_connection() as conn:
+            placeholders = ",".join("?" * len(ids))
+            cursor = conn.execute(
+                f"UPDATE pasajes SET solicitado_por = ? WHERE id IN ({placeholders})",
+                [solicitado_por] + ids
+            )
+            conn.commit()
+            return cursor.rowcount
+
+    def actualizar_ceco_lote(self, ids: list[int], ceco: str) -> int:
+        if not ids:
+            return 0
+        with self.db.get_connection() as conn:
+            placeholders = ",".join("?" * len(ids))
+            cursor = conn.execute(
+                f"UPDATE pasajes SET ceco = ? WHERE id IN ({placeholders})",
+                [ceco] + ids
+            )
+            conn.commit()
+            return cursor.rowcount
+
     def agregar_lista(self, tipo: str, valor: str) -> bool:
         try:
             with self.db.get_connection() as conn:
@@ -160,9 +184,19 @@ class PasajeRepository:
         items = self.obtener_lista(tipo)
         return [item["valor"] for item in items]
 
-    def resumen_general(self) -> dict:
+    def resumen_general(self, fecha_desde: str = None, fecha_hasta: str = None) -> dict:
         with self.db.get_connection() as conn:
-            row = conn.execute("""
+            conditions = []
+            params = []
+            if fecha_desde:
+                conditions.append("fecha_vuelo >= ?")
+                params.append(fecha_desde)
+            if fecha_hasta:
+                conditions.append("fecha_vuelo <= ?")
+                params.append(fecha_hasta)
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+            row = conn.execute(f"""
                 SELECT
                     COUNT(*) as total_pasajes,
                     COUNT(DISTINCT pasajeros) as total_pasajeros,
@@ -171,40 +205,71 @@ class PasajeRepository:
                     COALESCE(MIN(total_pagado), 0) as minimo,
                     COALESCE(MAX(total_pagado), 0) as maximo
                 FROM pasajes
-            """).fetchone()
+                {where_clause}
+            """, params).fetchone()
             return dict(row)
 
-    def gasto_por_ceco(self) -> list[dict]:
+    def gasto_por_ceco(self, fecha_desde: str = None, fecha_hasta: str = None) -> list[dict]:
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            conditions = ["ceco != ''"]
+            params = []
+            if fecha_desde:
+                conditions.append("fecha_vuelo >= ?")
+                params.append(fecha_desde)
+            if fecha_hasta:
+                conditions.append("fecha_vuelo <= ?")
+                params.append(fecha_hasta)
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}"
+            cursor = conn.execute(f"""
                 SELECT ceco,
                     COUNT(*) as pasajes,
                     COALESCE(SUM(total_pagado), 0) as total,
                     COALESCE(AVG(total_pagado), 0) as promedio
                 FROM pasajes
-                WHERE ceco != ''
+                {where_clause}
                 GROUP BY ceco
                 ORDER BY total DESC
-            """)
+            """, params)
             return [dict(r) for r in cursor.fetchall()]
 
-    def gasto_por_solicitante(self) -> list[dict]:
+    def gasto_por_solicitante(self, fecha_desde: str = None, fecha_hasta: str = None) -> list[dict]:
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            conditions = ["solicitado_por != ''"]
+            params = []
+            if fecha_desde:
+                conditions.append("fecha_vuelo >= ?")
+                params.append(fecha_desde)
+            if fecha_hasta:
+                conditions.append("fecha_vuelo <= ?")
+                params.append(fecha_hasta)
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}"
+            cursor = conn.execute(f"""
                 SELECT solicitado_por,
                     COUNT(*) as pasajes,
                     COALESCE(SUM(total_pagado), 0) as total,
                     COALESCE(AVG(total_pagado), 0) as promedio
                 FROM pasajes
-                WHERE solicitado_por != ''
+                {where_clause}
                 GROUP BY solicitado_por
                 ORDER BY total DESC
-            """)
+            """, params)
             return [dict(r) for r in cursor.fetchall()]
 
-    def gasto_por_aerolinea(self) -> list[dict]:
+    def gasto_por_aerolinea(self, fecha_desde: str = None, fecha_hasta: str = None) -> list[dict]:
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            conditions = []
+            params = []
+            if fecha_desde:
+                conditions.append("fecha_vuelo >= ?")
+                params.append(fecha_desde)
+            if fecha_hasta:
+                conditions.append("fecha_vuelo <= ?")
+                params.append(fecha_hasta)
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+            cursor = conn.execute(f"""
                 SELECT aerolinea,
                     COUNT(*) as pasajes,
                     COALESCE(SUM(total_pagado), 0) as total,
@@ -212,50 +277,81 @@ class PasajeRepository:
                     COALESCE(MIN(total_pagado), 0) as minimo,
                     COALESCE(MAX(total_pagado), 0) as maximo
                 FROM pasajes
+                {where_clause}
                 GROUP BY aerolinea
                 ORDER BY total DESC
-            """)
+            """, params)
             return [dict(r) for r in cursor.fetchall()]
 
-    def top_rutas(self, limit: int = 10) -> list[dict]:
+    def top_rutas(self, limit: int = 10, fecha_desde: str = None, fecha_hasta: str = None) -> list[dict]:
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            conditions = ["origen != ''", "destino != ''"]
+            params = []
+            if fecha_desde:
+                conditions.append("fecha_vuelo >= ?")
+                params.append(fecha_desde)
+            if fecha_hasta:
+                conditions.append("fecha_vuelo <= ?")
+                params.append(fecha_hasta)
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}"
+            cursor = conn.execute(f"""
                 SELECT origen, destino,
                     COUNT(*) as viajes,
                     COALESCE(SUM(total_pagado), 0) as total,
                     COALESCE(AVG(total_pagado), 0) as promedio
                 FROM pasajes
-                WHERE origen != '' AND destino != ''
+                {where_clause}
                 GROUP BY origen, destino
                 ORDER BY viajes DESC
                 LIMIT ?
-            """, (limit,))
+            """, params + [limit])
             return [dict(r) for r in cursor.fetchall()]
 
-    def top_pasajeros(self, limit: int = 10) -> list[dict]:
+    def top_pasajeros(self, limit: int = 10, fecha_desde: str = None, fecha_hasta: str = None) -> list[dict]:
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            conditions = ["pasajeros != ''"]
+            params = []
+            if fecha_desde:
+                conditions.append("fecha_vuelo >= ?")
+                params.append(fecha_desde)
+            if fecha_hasta:
+                conditions.append("fecha_vuelo <= ?")
+                params.append(fecha_hasta)
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}"
+            cursor = conn.execute(f"""
                 SELECT pasajeros,
                     COUNT(*) as viajes,
                     COALESCE(SUM(total_pagado), 0) as total
                 FROM pasajes
-                WHERE pasajeros != ''
+                {where_clause}
                 GROUP BY pasajeros
                 ORDER BY viajes DESC
                 LIMIT ?
-            """, (limit,))
+            """, params + [limit])
             return [dict(r) for r in cursor.fetchall()]
 
-    def gasto_por_mes(self) -> list[dict]:
+    def gasto_por_mes(self, fecha_desde: str = None, fecha_hasta: str = None) -> list[dict]:
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            conditions = ["fecha_vuelo != ''"]
+            params = []
+            if fecha_desde:
+                conditions.append("fecha_vuelo >= ?")
+                params.append(fecha_desde)
+            if fecha_hasta:
+                conditions.append("fecha_vuelo <= ?")
+                params.append(fecha_hasta)
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}"
+            cursor = conn.execute(f"""
                 SELECT substr(fecha_vuelo, 4, 2) as mes,
                        substr(fecha_vuelo, 7, 2) as anio,
                        COUNT(*) as pasajes,
                        COALESCE(SUM(total_pagado), 0) as total
                 FROM pasajes
-                WHERE fecha_vuelo != ''
+                {where_clause}
                 GROUP BY anio, mes
                 ORDER BY anio, mes
-            """)
+            """, params)
             return [dict(r) for r in cursor.fetchall()]

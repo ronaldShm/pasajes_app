@@ -1,5 +1,4 @@
 """Parser de archivos .msg (Outlook) usando extract-msg con fallback a .eml."""
-import logging
 import re
 from email import policy
 from email.parser import BytesParser
@@ -7,8 +6,9 @@ from pathlib import Path
 from typing import Optional
 
 import extract_msg
+from utils.logger import AppLogger
 
-logger = logging.getLogger(__name__)
+logger = AppLogger()
 
 
 class MSGParser:
@@ -28,7 +28,7 @@ class MSGParser:
         if result:
             return result
 
-        logger.warning("No se pudo extraer texto de %s con ningún método", file_path.name)
+        logger.log_info(f"No se pudo extraer texto de {file_path.name} con ningún método")
         return None
 
     @staticmethod
@@ -52,7 +52,7 @@ class MSGParser:
             finally:
                 msg.close()
         except Exception as e:
-            logger.debug("extract-msg falló para %s: %s", file_path.name, e)
+            logger.log_info(f"extract-msg falló para {file_path.name}: {e}")
             return None
 
     @staticmethod
@@ -75,7 +75,7 @@ class MSGParser:
                     parts.append(raw)
             return "\n".join(parts) if parts else None
         except Exception as e:
-            logger.debug("parse eml falló para %s: %s", file_path.name, e)
+            logger.log_info(f"parse eml falló para {file_path.name}: {e}")
             return None
 
     @staticmethod

@@ -1,8 +1,39 @@
-"""Clase base abstracta para extractores de aerolíneas."""
+"""Clase base abstracta para extractores de aerolíneas y funciones compartidas."""
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
+
+
+CITY_TO_IATA = {
+    "SANTIAGO": "SCL", "SANTIAGO DE CHILE": "SCL", "ANTOFAGASTA": "ANF",
+    "COPIAPO": "CJC", "COPIAPÓ": "CJC", "CALAMA": "CJC",
+    "IQUIQUE": "IQQ", "LA SERENA": "LSC", "ARICA": "ARI",
+    "PUNTA ARENAS": "PUQ", "BALMACEDA": "BBA", "TEMUCO": "ZCO",
+    "VALDIVIA": "ZAL", "PUERTO MONTT": "PMC", "OSORNO": "ZOS",
+    "CONCEPCION": "CCP", "CONCEPCIÓN": "CCP", "CASTRO": "MHC",
+    "PUERTO NATALES": "PNT",
+}
+
+_ACCENT_MAP = str.maketrans("ÁÉÍÓÚ", "AEIOU")
+
+_MONTHS = {
+    "ene": "01", "feb": "02", "mar": "03", "abr": "04",
+    "may": "05", "jun": "06", "jul": "07", "ago": "08",
+    "sep": "09", "oct": "10", "nov": "11", "dic": "12",
+    "jan": "01", "apr": "04", "aug": "08", "dec": "12",
+}
+
+
+def parse_money(value: str) -> Optional[float]:
+    """Convierte un string monetario CLP a float."""
+    if not value:
+        return None
+    try:
+        clean = value.replace(",", "").replace(".", "")
+        return float(clean)
+    except (ValueError, TypeError):
+        return None
 
 
 @dataclass
@@ -54,16 +85,6 @@ def normalize_payment_method(value: str) -> str:
     if "crédito" in normalized or "credito" in normalized:
         return "TDC"
     return value.strip()
-
-
-_MONTHS = {
-    "ene": "01", "feb": "02", "mar": "03", "abr": "04",
-    "may": "05", "jun": "06", "jul": "07", "ago": "08",
-    "sep": "09", "oct": "10", "nov": "11", "dic": "12",
-    "jan": "01", "feb": "02", "mar": "03", "apr": "04",
-    "jun": "06", "jul": "07", "aug": "08",
-    "sep": "09", "oct": "10", "nov": "11", "dec": "12",
-}
 
 
 def normalize_date(value: str) -> str:

@@ -1,6 +1,9 @@
 """Panel de reportes y estadísticas."""
 import customtkinter as ctk
+from datetime import datetime
 from database.repository import PasajeRepository
+from excel.exporter import ExcelExporter
+import tkinter.messagebox as messagebox
 
 
 class ReportsFrame(ctk.CTkFrame):
@@ -23,10 +26,35 @@ class ReportsFrame(ctk.CTkFrame):
         ).pack(side="left", padx=10)
 
         ctk.CTkButton(
+            header, text="Exportar", width=100,
+            command=self._export_to_excel,
+            fg_color="#27ae60", hover_color="#1e8449"
+        ).pack(side="right", padx=5)
+
+        ctk.CTkButton(
             header, text="Actualizar", width=100,
             command=self.refresh_reports,
             fg_color="#2E86AB", hover_color="#1a6d8a"
         ).pack(side="right", padx=5)
+
+        date_frame = ctk.CTkFrame(header, fg_color="transparent")
+        date_frame.pack(side="right", padx=10)
+
+        ctk.CTkLabel(
+            date_frame, text="Desde:",
+            font=ctk.CTkFont(size=11)
+        ).pack(side="left", padx=(0, 5))
+
+        self.date_desde = ctk.CTkEntry(date_frame, width=100, placeholder_text="DD/MM/YY")
+        self.date_desde.pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(
+            date_frame, text="Hasta:",
+            font=ctk.CTkFont(size=11)
+        ).pack(side="left", padx=(0, 5))
+
+        self.date_hasta = ctk.CTkEntry(date_frame, width=100, placeholder_text="DD/MM/YY")
+        self.date_hasta.pack(side="left", padx=(0, 5))
 
         scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
         scroll.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
@@ -38,6 +66,11 @@ class ReportsFrame(ctk.CTkFrame):
         self._build_section_aerolinea(scroll)
         self._build_section_rutas(scroll)
         self._build_section_pasajeros(scroll)
+
+    def _get_date_filters(self):
+        desde = self.date_desde.get().strip() if hasattr(self, 'date_desde') else ""
+        hasta = self.date_hasta.get().strip() if hasattr(self, 'date_hasta') else ""
+        return desde or None, hasta or None
 
     def _build_kpi_cards(self, parent):
         section = ctk.CTkFrame(parent, fg_color="#1a1a2e")
@@ -76,7 +109,7 @@ class ReportsFrame(ctk.CTkFrame):
             parent, row=1, title="GASTO POR CENTRO DE COSTO (CECO)",
             headers=["CECO", "Pasajes", "Total", "Promedio"],
             width_cols=[150, 80, 120, 120],
-            fetch_method=self.repo.gasto_por_ceco,
+            fetch_method=lambda: self.repo.gasto_por_ceco(*self._get_date_filters()),
             format_fn=lambda r: [
                 r.get("ceco", ""),
                 str(r.get("pasajes", 0)),
@@ -90,7 +123,7 @@ class ReportsFrame(ctk.CTkFrame):
             parent, row=2, title="GASTO POR SOLICITANTE",
             headers=["Solicitante", "Pasajes", "Total", "Promedio"],
             width_cols=[150, 80, 120, 120],
-            fetch_method=self.repo.gasto_por_solicitante,
+            fetch_method=lambda: self.repo.gasto_por_solicitante(*self._get_date_filters()),
             format_fn=lambda r: [
                 r.get("solicitado_por", ""),
                 str(r.get("pasajes", 0)),
@@ -104,7 +137,7 @@ class ReportsFrame(ctk.CTkFrame):
             parent, row=3, title="GASTO POR AEROLÍNEA",
             headers=["Aerolínea", "Pasajes", "Total", "Promedio", "Mín", "Máx"],
             width_cols=[100, 80, 120, 120, 100, 100],
-            fetch_method=self.repo.gasto_por_aerolinea,
+            fetch_method=lambda: self.repo.gasto_por_aerolinea(*self._get_date_filters()),
             format_fn=lambda r: [
                 r.get("aerolinea", ""),
                 str(r.get("pasajes", 0)),
@@ -120,7 +153,7 @@ class ReportsFrame(ctk.CTkFrame):
             parent, row=4, title="TOP 10 RUTAS",
             headers=["Origen", "Destino", "Viajes", "Total", "Promedio"],
             width_cols=[80, 80, 80, 120, 120],
-            fetch_method=lambda: self.repo.top_rutas(10),
+            fetch_method=lambda: self.repo.top_rutas(10, *self._get_date_filters()),
             format_fn=lambda r: [
                 r.get("origen", ""),
                 r.get("destino", ""),
@@ -135,7 +168,7 @@ class ReportsFrame(ctk.CTkFrame):
             parent, row=5, title="TOP 10 PASAJEROS",
             headers=["Pasajero", "Viajes", "Total"],
             width_cols=[200, 80, 120],
-            fetch_method=lambda: self.repo.top_pasajeros(10),
+            fetch_method=lambda: self.repo.top_pasajeros(10, *self._get_date_filters()),
             format_fn=lambda r: [
                 r.get("pasajeros", ""),
                 str(r.get("viajes", 0)),
@@ -199,3 +232,20 @@ class ReportsFrame(ctk.CTkFrame):
         for widget in self.winfo_children():
             widget.destroy()
         self._setup_ui()
+
+    def _export_to_excel(self):
+        try:
+            desde, hasta = self._get_date_filters()
+            report_data = {
+                "resumen": self.repo.resumen_general(desde, hasta),
+                "ceco": self.repo.gasto_por_ceco(desde, hasta),
+                "solicitante": self.repo.gasto_por_solicitante(desde, hasta),
+                "aerolinea": self.repo.gasto_por_aerolinea(desde, hasta),
+                "rutas": self.repo.top_rutas(10, desde, hasta),
+                "pasajeros": self.repo.top_pasajeros(10, desde, hasta),
+            }
+            exporter = ExcelExporter()
+            path = exporter.export_report_to_excel(report_data)
+            messagebox.showinfo("Éxito", f"Reporte exportado a:\n{path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al exportar reporte:\n{str(e)}")

@@ -13,6 +13,7 @@ from extractors.base import TicketData, expandir_pasajeros
 from database.repository import PasajeRepository
 from utils.logger import AppLogger
 from utils.file_manager import FileManager
+import tkinter.messagebox as messagebox
 
 
 class ProcessingResult:
@@ -26,13 +27,15 @@ class ProcessingResult:
 
 
 class TicketProcessor:
-    def __init__(self, progress_callback: Optional[Callable] = None):
+    def __init__(self, progress_callback: Optional[Callable] = None, show_duplicates: bool = True):
         self.detector = AirlineDetector()
         self.validator = DuplicateValidator()
         self.repo = PasajeRepository()
         self.logger = AppLogger()
         self.file_manager = FileManager()
         self.progress_callback = progress_callback
+        self.show_duplicates = show_duplicates
+        self.duplicate_files = []
 
     def process_folder(self, folder_path: str) -> ProcessingResult:
         result = ProcessingResult()
@@ -50,6 +53,7 @@ class TicketProcessor:
             if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
         ]
         result.total_archivos = len(files)
+        self.duplicate_files = []
 
         for idx, file_path in enumerate(files):
             if self.progress_callback:
@@ -59,6 +63,7 @@ class TicketProcessor:
                 file_result = self._process_file(file_path, folder)
                 if file_result == "duplicado":
                     result.duplicados += 1
+                    self.duplicate_files.append(file_path.name)
                 elif file_result == "error":
                     result.errores += 1
                 else:
@@ -73,8 +78,22 @@ class TicketProcessor:
                     self.logger.log_error(file_path.name, "No se pudo mover a Errores/")
                 result.detalles.append(f"Error procesando {file_path.name}: {e}")
 
+        if self.show_duplicates and self.duplicate_files:
+            self._show_duplicate_alert()
+
         self.logger.log_summary(result)
         return result
+
+    def _show_duplicate_alert(self):
+        count = len(self.duplicate_files)
+        if count == 1:
+            msg = f"Se detectó 1 archivo duplicado:\n{self.duplicate_files[0]}"
+        else:
+            files_list = "\n".join(self.duplicate_files[:10])
+            if count > 10:
+                files_list += f"\n... y {count - 10} más"
+            msg = f"Se detectaron {count} archivos duplicados:\n{files_list}"
+        messagebox.showwarning("Duplicados Detectados", msg)
 
     def _process_file(self, file_path: Path, base_folder: Path) -> str:
         text = self._read_file(file_path)
