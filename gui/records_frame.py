@@ -151,21 +151,31 @@ class RecordsFrame(ctk.CTkFrame):
 
     def _create_headers(self):
         headers = [
-            "Fecha", "Aerolínea", "Pasajeros", "Tickets",
+            "✓", "Fecha", "Aerolínea", "Pasajeros", "Tickets",
             "Reserva", "Vuelo", "Origen", "Destino",
             "Fecha Vuelo", "Total", "Solicitado Por", "CECO", "Archivo"
         ]
         header_frame = ctk.CTkFrame(self.table, fg_color="#2E86AB", corner_radius=5)
         header_frame.pack(fill="x", padx=2, pady=(2, 0))
 
-        self._widths = [85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 110, 100, 140]
-        for i, (header, width) in enumerate(zip(headers, self._widths)):
+        self._widths = [30, 85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 110, 100, 140]
+
+        self._select_all_var = ctk.BooleanVar(value=False)
+        select_all_cb = ctk.CTkCheckBox(
+            header_frame, text="", variable=self._select_all_var,
+            width=28, height=28, corner_radius=4,
+            fg_color="#27ae60", hover_color="#1e8449",
+            command=self._toggle_select_all
+        )
+        select_all_cb.grid(row=0, column=0, padx=2, pady=5)
+
+        for i, (header, width) in enumerate(zip(headers[1:], self._widths[1:])):
             label = ctk.CTkLabel(
                 header_frame, text=header, width=width,
                 font=ctk.CTkFont(size=10, weight="bold"),
                 text_color="white", anchor="w"
             )
-            label.grid(row=0, column=i, padx=2, pady=5, sticky="w")
+            label.grid(row=0, column=i + 1, padx=2, pady=5, sticky="w")
 
     def _load_dropdown_options(self):
         self._solicitado_options = [""] + self.repo.obtener_valores_lista("solicitado")
@@ -313,6 +323,17 @@ class RecordsFrame(ctk.CTkFrame):
             row_frame = ctk.CTkFrame(self.table, fg_color=bg_color, corner_radius=0)
             row_frame.pack(fill="x", padx=2, pady=1)
 
+            record_id = record.get("id")
+
+            cb_var = ctk.BooleanVar(value=record_id in self._selected_ids)
+            cb = ctk.CTkCheckBox(
+                row_frame, text="", variable=cb_var,
+                width=28, height=28, corner_radius=4,
+                fg_color="#27ae60", hover_color="#1e8449",
+                command=lambda rid=record_id, v=cb_var: self._toggle_record(rid, v)
+            )
+            cb.grid(row=0, column=0, padx=2, pady=3)
+
             values = [
                 str(record.get("fecha_registro", ""))[:10],
                 str(record.get("aerolinea", "")),
@@ -326,15 +347,13 @@ class RecordsFrame(ctk.CTkFrame):
                 f"${record.get('total_pagado', 0):,.0f}" if record.get("total_pagado") else "",
             ]
 
-            for i, (value, width) in enumerate(zip(values, self._widths[:10])):
+            for i, (value, width) in enumerate(zip(values, self._widths[1:])):
                 label = ctk.CTkLabel(
                     row_frame, text=value, width=width,
                     font=ctk.CTkFont(size=9), anchor="w",
                     text_color="#e0e0e0"
                 )
-                label.grid(row=0, column=i, padx=2, pady=3, sticky="w")
-
-            record_id = record.get("id")
+                label.grid(row=0, column=i + 1, padx=2, pady=3, sticky="w")
 
             solicitado_var = ctk.StringVar(value=record.get("solicitado_por", ""))
             solicitado_menu = ctk.CTkOptionMenu(
@@ -344,7 +363,7 @@ class RecordsFrame(ctk.CTkFrame):
                 fg_color="#3a3a3a", button_color="#555",
                 command=lambda val, rid=record_id: self._update_solicitado_por(rid, val)
             )
-            solicitado_menu.grid(row=0, column=10, padx=2, pady=3, sticky="w")
+            solicitado_menu.grid(row=0, column=11, padx=2, pady=3, sticky="w")
 
             ceco_var = ctk.StringVar(value=record.get("ceco", ""))
             ceco_menu = ctk.CTkOptionMenu(
@@ -354,7 +373,7 @@ class RecordsFrame(ctk.CTkFrame):
                 fg_color="#3a3a3a", button_color="#555",
                 command=lambda val, rid=record_id: self._update_ceco(rid, val)
             )
-            ceco_menu.grid(row=0, column=11, padx=2, pady=3, sticky="w")
+            ceco_menu.grid(row=0, column=12, padx=2, pady=3, sticky="w")
 
             archivo = str(record.get("archivo_origen", ""))[:25]
             label = ctk.CTkLabel(
@@ -362,7 +381,36 @@ class RecordsFrame(ctk.CTkFrame):
                 font=ctk.CTkFont(size=9), anchor="w",
                 text_color="#e0e0e0"
             )
-            label.grid(row=0, column=12, padx=2, pady=3, sticky="w")
+            label.grid(row=0, column=13, padx=2, pady=3, sticky="w")
+
+    def _toggle_record(self, record_id, var):
+        if var.get():
+            self._selected_ids.add(record_id)
+        else:
+            self._selected_ids.discard(record_id)
+        self._update_selected_label()
+
+    def _toggle_select_all(self):
+        if self._select_all_var.get():
+            page_ids = [r.get("id") for r in self._filtered_records
+                        if r.get("id") is not None]
+            start = (self._current_page - 1) * self._page_size
+            end = min(start + self._page_size, len(self._filtered_records))
+            for r in self._filtered_records[start:end]:
+                rid = r.get("id")
+                if rid is not None:
+                    self._selected_ids.add(rid)
+        else:
+            start = (self._current_page - 1) * self._page_size
+            end = min(start + self._page_size, len(self._filtered_records))
+            for r in self._filtered_records[start:end]:
+                self._selected_ids.discard(r.get("id"))
+        self._update_selected_label()
+        self._render_current_page()
+
+    def _update_selected_label(self):
+        count = len(self._selected_ids)
+        self.selected_label.configure(text=f"Seleccionados: {count}")
 
     def _build_pagination(self, parent):
         self.prev_btn = ctk.CTkButton(
