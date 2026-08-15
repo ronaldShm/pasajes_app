@@ -7,6 +7,7 @@ from gui.records_frame import RecordsFrame
 from gui.lists_frame import ListsFrame
 from gui.reports_frame import ReportsFrame
 from utils.file_manager import FileManager
+from utils.backup import BackupScheduler
 
 
 class App(ctk.CTk):
@@ -20,6 +21,8 @@ class App(ctk.CTk):
         self.file_manager = FileManager()
         self.config_data = load_config()
         self.selected_folder = self.config_data.get("last_folder", "")
+        self.scheduler = BackupScheduler()
+        self.scheduler.start()
         self._setup_ui()
         if self.selected_folder:
             self.home_frame.folder_var.set(self.selected_folder)
@@ -128,4 +131,5 @@ class App(ctk.CTk):
 
     def _on_exit(self):
         if messagebox.askyesno("Salir", "¿Estás seguro que deseas salir?"):
+            self.scheduler.stop()
             self.destroy()

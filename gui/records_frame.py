@@ -3,6 +3,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from database.repository import PasajeRepository
 from excel.exporter import ExcelExporter
+from utils.backup import backup_db
 
 
 class RecordsFrame(ctk.CTkFrame):
@@ -48,6 +49,12 @@ class RecordsFrame(ctk.CTkFrame):
             header_frame, text="Exportar Excel", width=120,
             command=self._export_excel,
             fg_color="#27ae60", hover_color="#219a52"
+        ).pack(side="right", padx=5)
+
+        ctk.CTkButton(
+            header_frame, text="Backup", width=80,
+            command=self._make_backup,
+            fg_color="#8e44ad", hover_color="#6c3483"
         ).pack(side="right", padx=5)
 
         ctk.CTkButton(
@@ -530,6 +537,13 @@ class RecordsFrame(ctk.CTkFrame):
             )
         except Exception as e:
             messagebox.showerror("Error", f"Error al exportar:\n{e}")
+
+    def _make_backup(self):
+        try:
+            path = backup_db()
+            messagebox.showinfo("Backup", f"Backup creado en:\n{path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al crear backup:\n{e}")
 
     def _clear_records(self):
         records = self.repo.obtener_todos()
