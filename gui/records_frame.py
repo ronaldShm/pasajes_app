@@ -13,6 +13,7 @@ class RecordsFrame(ctk.CTkFrame):
         self._all_records = []
         self._solicitado_options = [""]
         self._ceco_options = [""]
+        self._suppress_filters = False
         self._setup_ui()
 
     def _setup_ui(self):
@@ -199,6 +200,8 @@ class RecordsFrame(ctk.CTkFrame):
             self.solicitado_var.set(current_solicitado)
 
     def _apply_filters(self):
+        if self._suppress_filters:
+            return
         search = self.search_var.get().lower().strip()
         airline = self.airline_var.get()
         origin = self.origin_var.get()
@@ -249,10 +252,13 @@ class RecordsFrame(ctk.CTkFrame):
         self.solicitado_var.set("Todos")
 
     def refresh_data(self):
+        self._suppress_filters = True
         self._load_dropdown_options()
         self._all_records = self.repo.obtener_todos()
         self._update_filter_options()
         self._clear_filters()
+        self._suppress_filters = False
+        self._apply_filters()
 
     def _render_records(self, records):
         for widget in self.table.winfo_children()[1:]:
