@@ -17,7 +17,7 @@ class RecordsFrame(ctk.CTkFrame):
         self._solicitado_options = [""]
         self._ceco_options = [""]
         self._suppress_filters = False
-        self._page_size = 50
+        self._page_size = 25
         self._current_page = 1
         self._selected_ids = set()
         self._setup_ui()
