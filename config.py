@@ -34,6 +34,7 @@ COLUMNAS_EXCEL = [
     "Fecha Vuelo",
     "Total Pagado",
     "Forma Pago",
+    "Solicitado Por",
     "Archivo Origen",
 ]
 

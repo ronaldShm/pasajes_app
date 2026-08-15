@@ -45,11 +45,17 @@ class Database:
                     fecha_vuelo TEXT,
                     total_pagado REAL,
                     forma_pago TEXT,
+                    solicitado_por TEXT DEFAULT '',
                     archivo_origen TEXT NOT NULL,
                     estado TEXT DEFAULT 'procesado',
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            # Migracion: agregar columna solicitado_por si no existe
+            try:
+                conn.execute("SELECT solicitado_por FROM pasajes LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE pasajes ADD COLUMN solicitado_por TEXT DEFAULT ''")
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_ticket ON pasajes(ticket)
             """)

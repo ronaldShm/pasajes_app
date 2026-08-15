@@ -64,12 +64,12 @@ class RecordsFrame(ctk.CTkFrame):
         headers = [
             "Fecha", "Aerolínea", "Pasajeros", "Tickets",
             "Reserva", "Vuelo", "Origen", "Destino",
-            "Fecha Vuelo", "Total", "Archivo"
+            "Fecha Vuelo", "Total", "Solicitado Por", "Archivo"
         ]
         header_frame = ctk.CTkFrame(self.table, fg_color="#2E86AB", corner_radius=5)
         header_frame.pack(fill="x", padx=2, pady=(2, 0))
 
-        widths = [85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 140]
+        widths = [85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 100, 140]
         for i, (header, width) in enumerate(zip(headers, widths)):
             label = ctk.CTkLabel(
                 header_frame, text=header, width=width,
@@ -85,7 +85,7 @@ class RecordsFrame(ctk.CTkFrame):
         records = self.repo.obtener_todos()
         self.total_label.configure(text=f"Total: {len(records)}")
 
-        widths = [85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 140]
+        widths = [85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 100, 140]
         for idx, record in enumerate(records):
             bg_color = "#2b2b2b" if idx % 2 == 0 else "#353535"
             row_frame = ctk.CTkFrame(self.table, fg_color=bg_color, corner_radius=0)
@@ -102,16 +102,40 @@ class RecordsFrame(ctk.CTkFrame):
                 str(record.get("destino", "")),
                 str(record.get("fecha_vuelo", "")),
                 f"${record.get('total_pagado', 0):,.0f}" if record.get("total_pagado") else "",
+                str(record.get("solicitado_por", "")),
                 str(record.get("archivo_origen", ""))[:25],
             ]
 
             for i, (value, width) in enumerate(zip(values, widths)):
-                label = ctk.CTkLabel(
-                    row_frame, text=value, width=width,
-                    font=ctk.CTkFont(size=9), anchor="w",
-                    text_color="#e0e0e0"
-                )
-                label.grid(row=0, column=i, padx=2, pady=3, sticky="w")
+                if i == 10:  # Columna "Solicitado Por" editable
+                    entry = ctk.CTkEntry(
+                        row_frame, width=width,
+                        font=ctk.CTkFont(size=9),
+                        fg_color="#3a3a3a", text_color="#e0e0e0",
+                        border_color="#555"
+                    )
+                    entry.insert(0, value)
+                    entry.grid(row=0, column=i, padx=2, pady=3, sticky="w")
+                    record_id = record.get("id")
+                    entry.bind(
+                        "<FocusOut>",
+                        lambda e, rid=record_id, ent=entry: self._update_solicitado_por(rid, ent.get())
+                    )
+                    entry.bind(
+                        "<Return>",
+                        lambda e, rid=record_id, ent=entry: self._update_solicitado_por(rid, ent.get())
+                    )
+                else:
+                    label = ctk.CTkLabel(
+                        row_frame, text=value, width=width,
+                        font=ctk.CTkFont(size=9), anchor="w",
+                        text_color="#e0e0e0"
+                    )
+                    label.grid(row=0, column=i, padx=2, pady=3, sticky="w")
+
+    def _update_solicitado_por(self, record_id: int, value: str):
+        if record_id:
+            self.repo.actualizar_solicitado_por(record_id, value)
 
     def _export_excel(self):
         try:

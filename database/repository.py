@@ -58,8 +58,9 @@ class PasajeRepository:
                 INSERT INTO pasajes (
                     fecha_registro, aerolinea, pasajeros, cantidad_pasajeros,
                     ticket, reserva, fecha_emision, vuelo, origen, destino,
-                    fecha_vuelo, total_pagado, forma_pago, archivo_origen, estado
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    fecha_vuelo, total_pagado, forma_pago, solicitado_por,
+                    archivo_origen, estado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 data.get("fecha_registro", ""),
                 data.get("aerolinea", ""),
@@ -74,6 +75,7 @@ class PasajeRepository:
                 data.get("fecha_vuelo", ""),
                 data.get("total_pagado"),
                 data.get("forma_pago", ""),
+                data.get("solicitado_por", ""),
                 data.get("archivo_origen", ""),
                 data.get("estado", "procesado"),
             ))
@@ -108,3 +110,12 @@ class PasajeRepository:
             cursor = conn.execute("DELETE FROM pasajes")
             conn.commit()
             return cursor.rowcount
+
+    def actualizar_solicitado_por(self, id: int, solicitado_por: str) -> bool:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE pasajes SET solicitado_por = ? WHERE id = ?",
+                (solicitado_por, id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0

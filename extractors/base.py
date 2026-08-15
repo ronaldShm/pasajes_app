@@ -18,6 +18,7 @@ class TicketData:
     fecha_vuelo: str = ""
     total_pagado: Optional[float] = None
     forma_pago: str = ""
+    solicitado_por: str = ""
     archivo_origen: str = ""
 
     def to_dict(self) -> dict:
@@ -34,6 +35,7 @@ class TicketData:
             "fecha_vuelo": self.fecha_vuelo,
             "total_pagado": self.total_pagado,
             "forma_pago": self.forma_pago,
+            "solicitado_por": self.solicitado_por,
             "archivo_origen": self.archivo_origen,
         }
 
@@ -80,6 +82,7 @@ def expandir_pasajeros(tickets: list[TicketData]) -> list[TicketData]:
                 fecha_vuelo=t.fecha_vuelo,
                 total_pagado=total_individual,
                 forma_pago=t.forma_pago,
+                solicitado_por=t.solicitado_por,
                 archivo_origen=t.archivo_origen,
             ))
     return resultado
