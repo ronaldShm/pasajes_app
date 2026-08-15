@@ -35,6 +35,7 @@ COLUMNAS_EXCEL = [
     "Total Pagado",
     "Forma Pago",
     "Solicitado Por",
+    "CECO",
     "Archivo Origen",
 ]
 

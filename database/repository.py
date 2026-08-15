@@ -59,8 +59,8 @@ class PasajeRepository:
                     fecha_registro, aerolinea, pasajeros, cantidad_pasajeros,
                     ticket, reserva, fecha_emision, vuelo, origen, destino,
                     fecha_vuelo, total_pagado, forma_pago, solicitado_por,
-                    archivo_origen, estado
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ceco, archivo_origen, estado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 data.get("fecha_registro", ""),
                 data.get("aerolinea", ""),
@@ -76,6 +76,7 @@ class PasajeRepository:
                 data.get("total_pagado"),
                 data.get("forma_pago", ""),
                 data.get("solicitado_por", ""),
+                data.get("ceco", ""),
                 data.get("archivo_origen", ""),
                 data.get("estado", "procesado"),
             ))
@@ -119,3 +120,42 @@ class PasajeRepository:
             )
             conn.commit()
             return cursor.rowcount > 0
+
+    def actualizar_ceco(self, id: int, ceco: str) -> bool:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE pasajes SET ceco = ? WHERE id = ?",
+                (ceco, id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def agregar_lista(self, tipo: str, valor: str) -> bool:
+        try:
+            with self.db.get_connection() as conn:
+                conn.execute(
+                    "INSERT INTO listas (tipo, valor) VALUES (?, ?)",
+                    (tipo, valor.strip())
+                )
+                conn.commit()
+                return True
+        except Exception:
+            return False
+
+    def eliminar_lista_item(self, item_id: int) -> bool:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("DELETE FROM listas WHERE id = ?", (item_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def obtener_lista(self, tipo: str) -> list[dict]:
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT id, tipo, valor FROM listas WHERE tipo = ? ORDER BY valor",
+                (tipo,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def obtener_valores_lista(self, tipo: str) -> list[str]:
+        items = self.obtener_lista(tipo)
+        return [item["valor"] for item in items]

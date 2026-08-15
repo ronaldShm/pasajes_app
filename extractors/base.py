@@ -20,6 +20,7 @@ class TicketData:
     total_pagado: Optional[float] = None
     forma_pago: str = ""
     solicitado_por: str = ""
+    ceco: str = ""
     archivo_origen: str = ""
 
     def to_dict(self) -> dict:
@@ -37,6 +38,7 @@ class TicketData:
             "total_pagado": self.total_pagado,
             "forma_pago": self.forma_pago,
             "solicitado_por": self.solicitado_por,
+            "ceco": self.ceco,
             "archivo_origen": self.archivo_origen,
         }
 
@@ -119,6 +121,7 @@ def expandir_pasajeros(tickets: list[TicketData]) -> list[TicketData]:
                 total_pagado=total_individual,
                 forma_pago=t.forma_pago,
                 solicitado_por=t.solicitado_por,
+                ceco=t.ceco,
                 archivo_origen=t.archivo_origen,
             ))
     return resultado

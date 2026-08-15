@@ -46,6 +46,7 @@ class Database:
                     total_pagado REAL,
                     forma_pago TEXT,
                     solicitado_por TEXT DEFAULT '',
+                    ceco TEXT DEFAULT '',
                     archivo_origen TEXT NOT NULL,
                     estado TEXT DEFAULT 'procesado',
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -56,6 +57,19 @@ class Database:
                 conn.execute("SELECT solicitado_por FROM pasajes LIMIT 1")
             except sqlite3.OperationalError:
                 conn.execute("ALTER TABLE pasajes ADD COLUMN solicitado_por TEXT DEFAULT ''")
+            # Migracion: agregar columna ceco si no existe
+            try:
+                conn.execute("SELECT ceco FROM pasajes LIMIT 1")
+            except sqlite3.OperationalError:
+                conn.execute("ALTER TABLE pasajes ADD COLUMN ceco TEXT DEFAULT ''")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS listas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tipo TEXT NOT NULL,
+                    valor TEXT NOT NULL,
+                    UNIQUE(tipo, valor)
+                )
+            """)
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_ticket ON pasajes(ticket)
             """)

@@ -48,7 +48,7 @@ class ExcelExporter:
         col_widths = {
             1: 18, 2: 12, 3: 45, 4: 15, 5: 30, 6: 10,
             7: 14, 8: 18, 9: 12, 10: 12, 11: 14,
-            12: 15, 13: 22, 14: 20, 15: 30,
+            12: 15, 13: 22, 14: 20, 15: 15, 16: 30,
         }
         for col, width in col_widths.items():
             self.ws.column_dimensions[self._get_column_letter(col)].width = width
@@ -83,6 +83,7 @@ class ExcelExporter:
             data.get("total_pagado", ""),
             data.get("forma_pago", ""),
             data.get("solicitado_por", ""),
+            data.get("ceco", ""),
             data.get("archivo_origen", ""),
         ]
         for col_idx, value in enumerate(values, 1):

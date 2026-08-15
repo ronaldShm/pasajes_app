@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox
 from config import APP_NAME, APP_VERSION, load_config, save_config, SUPPORTED_EXTENSIONS
 from gui.home_frame import HomeFrame
 from gui.records_frame import RecordsFrame
+from gui.lists_frame import ListsFrame
 from utils.file_manager import FileManager
 
 
@@ -54,6 +55,13 @@ class App(ctk.CTk):
         )
         self.btn_records.pack(side="left", padx=5)
 
+        self.btn_lists = ctk.CTkButton(
+            nav_frame, text="Listas", width=100,
+            command=lambda: self._show_frame("lists"),
+            fg_color="#555555", hover_color="#444444"
+        )
+        self.btn_lists.pack(side="left", padx=5)
+
         self.btn_exit = ctk.CTkButton(
             nav_frame, text="Salir", width=80,
             command=self._on_exit,
@@ -71,6 +79,8 @@ class App(ctk.CTk):
         self.frames["home"] = self.home_frame
         self.records_frame = RecordsFrame(self.container, self)
         self.frames["records"] = self.records_frame
+        self.lists_frame = ListsFrame(self.container, self)
+        self.frames["lists"] = self.lists_frame
 
         self._show_frame("home")
 
@@ -79,13 +89,19 @@ class App(ctk.CTk):
             frame.grid_forget()
         frame = self.frames[name]
         frame.grid(row=0, column=0, sticky="nsew")
+
+        self.btn_home.configure(fg_color="#555555")
+        self.btn_records.configure(fg_color="#555555")
+        self.btn_lists.configure(fg_color="#555555")
+
         if name == "home":
             self.btn_home.configure(fg_color="#2E86AB")
-            self.btn_records.configure(fg_color="#555555")
         elif name == "records":
-            self.btn_home.configure(fg_color="#555555")
             self.btn_records.configure(fg_color="#2E86AB")
             self.records_frame.refresh_data()
+        elif name == "lists":
+            self.btn_lists.configure(fg_color="#2E86AB")
+            self.lists_frame.refresh_lists()
 
     def select_folder(self):
         folder = filedialog.askdirectory(title="Seleccionar carpeta de pasajes")

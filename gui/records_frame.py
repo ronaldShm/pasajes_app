@@ -1,4 +1,4 @@
-"""Panel de visualización de registros con búsqueda y filtros."""
+"""Panel de visualización de registros con búsqueda, filtros y desplegables."""
 import customtkinter as ctk
 from tkinter import messagebox
 from database.repository import PasajeRepository
@@ -11,6 +11,8 @@ class RecordsFrame(ctk.CTkFrame):
         self.app = app
         self.repo = PasajeRepository()
         self._all_records = []
+        self._solicitado_options = [""]
+        self._ceco_options = [""]
         self._setup_ui()
 
     def _setup_ui(self):
@@ -140,12 +142,12 @@ class RecordsFrame(ctk.CTkFrame):
         headers = [
             "Fecha", "Aerolínea", "Pasajeros", "Tickets",
             "Reserva", "Vuelo", "Origen", "Destino",
-            "Fecha Vuelo", "Total", "Solicitado Por", "Archivo"
+            "Fecha Vuelo", "Total", "Solicitado Por", "CECO", "Archivo"
         ]
         header_frame = ctk.CTkFrame(self.table, fg_color="#2E86AB", corner_radius=5)
         header_frame.pack(fill="x", padx=2, pady=(2, 0))
 
-        self._widths = [85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 100, 140]
+        self._widths = [85, 70, 180, 140, 60, 70, 55, 55, 80, 90, 110, 100, 140]
         for i, (header, width) in enumerate(zip(headers, self._widths)):
             label = ctk.CTkLabel(
                 header_frame, text=header, width=width,
@@ -153,6 +155,10 @@ class RecordsFrame(ctk.CTkFrame):
                 text_color="white", anchor="w"
             )
             label.grid(row=0, column=i, padx=2, pady=5, sticky="w")
+
+    def _load_dropdown_options(self):
+        self._solicitado_options = [""] + self.repo.obtener_valores_lista("solicitado")
+        self._ceco_options = [""] + self.repo.obtener_valores_lista("ceco")
 
     def _update_filter_options(self):
         if not self._all_records:
@@ -243,6 +249,7 @@ class RecordsFrame(ctk.CTkFrame):
         self.solicitado_var.set("Todos")
 
     def refresh_data(self):
+        self._load_dropdown_options()
         self._all_records = self.repo.obtener_todos()
         self._update_filter_options()
         self._clear_filters()
@@ -269,40 +276,53 @@ class RecordsFrame(ctk.CTkFrame):
                 str(record.get("destino", "")),
                 str(record.get("fecha_vuelo", "")),
                 f"${record.get('total_pagado', 0):,.0f}" if record.get("total_pagado") else "",
-                str(record.get("solicitado_por", "")),
-                str(record.get("archivo_origen", ""))[:25],
             ]
 
-            for i, (value, width) in enumerate(zip(values, self._widths)):
-                if i == 10:  # Columna "Solicitado Por" editable
-                    entry = ctk.CTkEntry(
-                        row_frame, width=width,
-                        font=ctk.CTkFont(size=9),
-                        fg_color="#3a3a3a", text_color="#e0e0e0",
-                        border_color="#555"
-                    )
-                    entry.insert(0, value)
-                    entry.grid(row=0, column=i, padx=2, pady=3, sticky="w")
-                    record_id = record.get("id")
-                    entry.bind(
-                        "<FocusOut>",
-                        lambda e, rid=record_id, ent=entry: self._update_solicitado_por(rid, ent.get())
-                    )
-                    entry.bind(
-                        "<Return>",
-                        lambda e, rid=record_id, ent=entry: self._update_solicitado_por(rid, ent.get())
-                    )
-                else:
-                    label = ctk.CTkLabel(
-                        row_frame, text=value, width=width,
-                        font=ctk.CTkFont(size=9), anchor="w",
-                        text_color="#e0e0e0"
-                    )
-                    label.grid(row=0, column=i, padx=2, pady=3, sticky="w")
+            for i, (value, width) in enumerate(zip(values, self._widths[:10])):
+                label = ctk.CTkLabel(
+                    row_frame, text=value, width=width,
+                    font=ctk.CTkFont(size=9), anchor="w",
+                    text_color="#e0e0e0"
+                )
+                label.grid(row=0, column=i, padx=2, pady=3, sticky="w")
+
+            record_id = record.get("id")
+
+            solicitado_var = ctk.StringVar(value=record.get("solicitado_por", ""))
+            solicitado_menu = ctk.CTkOptionMenu(
+                row_frame, variable=solicitado_var,
+                values=self._solicitado_options,
+                width=110, font=ctk.CTkFont(size=9),
+                fg_color="#3a3a3a", button_color="#555",
+                command=lambda val, rid=record_id: self._update_solicitado_por(rid, val)
+            )
+            solicitado_menu.grid(row=0, column=10, padx=2, pady=3, sticky="w")
+
+            ceco_var = ctk.StringVar(value=record.get("ceco", ""))
+            ceco_menu = ctk.CTkOptionMenu(
+                row_frame, variable=ceco_var,
+                values=self._ceco_options,
+                width=100, font=ctk.CTkFont(size=9),
+                fg_color="#3a3a3a", button_color="#555",
+                command=lambda val, rid=record_id: self._update_ceco(rid, val)
+            )
+            ceco_menu.grid(row=0, column=11, padx=2, pady=3, sticky="w")
+
+            archivo = str(record.get("archivo_origen", ""))[:25]
+            label = ctk.CTkLabel(
+                row_frame, text=archivo, width=140,
+                font=ctk.CTkFont(size=9), anchor="w",
+                text_color="#e0e0e0"
+            )
+            label.grid(row=0, column=12, padx=2, pady=3, sticky="w")
 
     def _update_solicitado_por(self, record_id: int, value: str):
         if record_id:
             self.repo.actualizar_solicitado_por(record_id, value)
+
+    def _update_ceco(self, record_id: int, value: str):
+        if record_id:
+            self.repo.actualizar_ceco(record_id, value)
 
     def _export_excel(self):
         try:
